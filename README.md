@@ -5,8 +5,9 @@ in a highly concurrent environment.
 
 ## Table of Contents
 1. [About](#about)
-2. [Storage](#storage)
-3. [Example Usage](#example-usage)
+2. [Memory & Time Performance](#memory--time-performance)
+3. [Benchmarking](#benchmarking)
+4. [Example Usage](#example-usage)
    
 ## About
 Broker and gateway implementations of MQTT will all need to ability to quickly and efficiently look up subscriptions. Subscriptions
@@ -19,13 +20,17 @@ available for others who may need to same thing.
 Typical use would be to index your client session subscriptions using this tree for exceptionally fast lookup of subscriptions
 in high load environments. Modifications and Reads are entirely synchronized and can be performed without external synchronization.
 
-## Storage
+## Memory & Time Performance
 The tree uses a Tries algorithm internally (prefix tree), where each level of the tree is a normalized path segment. Thus a million subscriptions to the
 same topic path would only result in that topic path being stored once. Branch nodes along the path will diverge where new path segments are added. Therefore
 search performance and modification performance are a function of the number of levels of the tree traversed.
 
 Memberships to a given leaf node (subscriptions) are purposefully arbitrary types, allowing the calling code to specify their own member types. The stipulation is 
 that members are maintained in a HashSet, therefore ***the equals and hashCode methods of any chosen member type should be consistent***. 
+
+## Benchmarking
+I have yet to undertake a formal benchmark of the tree, but I would be happy to hear the results should someone else wish to compare against
+other implementations. I would advise that for a real comparison, a benchmark should incorporate concurrent read/updates to the tree.
 
 ## Example Usage
 
