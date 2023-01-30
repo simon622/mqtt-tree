@@ -33,13 +33,14 @@ public class MqttTreeUtils {
         int i = 0;
         int start = 0;
         boolean match = false;
+        String sep = separatorChar + "";
         while (i < len) {
             if (str.charAt(i) == separatorChar) {
                 if (match) {
                     list.add(str.substring(start, i));
                     match = false;
                 }
-                list.add(separatorChar + "");
+                list.add(sep);
                 start = ++i;
                 continue;
             }

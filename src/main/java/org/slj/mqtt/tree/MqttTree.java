@@ -38,17 +38,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class MqttTree<T> {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-
     public static final char DEFAULT_SPLIT = '/';
     public static final String DEFAULT_WILDCARD = "#";
     public static final String DEFAULT_WILDPATH = "+";
-    private final char split;
     private static final int DEFAULT_MAX_PATH_SIZE = 1024;
     private static final int DEFAULT_MAX_PATH_SEGMENTS = 1024;
     private static final int DEFAULT_MAX_MEMBERS_AT_LEVEL = 1024 * 10;
     private final Set<String> wildcards = new HashSet<>(4);
     private final Set<String> wildpaths = new HashSet<>(4);
-    private boolean selfPruningTree;
+    private final boolean selfPruningTree;
+    private final char split;
     private final TrieNode<T> root;
     private long maxPathSize = DEFAULT_MAX_PATH_SIZE;
     private long maxPathSegments = DEFAULT_MAX_PATH_SEGMENTS;
