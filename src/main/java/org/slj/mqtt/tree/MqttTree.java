@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * TriesTree implementation designed to add members at each level of the tree and normalise the storage
+ * retaining the separators as tree nodes per the specification.
  */
 public class MqttTree<T> {
 
