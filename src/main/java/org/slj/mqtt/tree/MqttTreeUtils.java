@@ -17,7 +17,7 @@ import java.util.List;
  * the original authors for their work.
  *
  */
-public class MqttSubscriptionTreeUtils {
+public class MqttTreeUtils {
 
     private final static String[] EMPTY = new String[0];
 
