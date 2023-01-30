@@ -22,10 +22,10 @@ in high load environments. Modifications and Reads are entirely synchronized and
 
 ```java
 public class Example {
-    public static void main(String[] args) throws MqttSubscriptionTreeLimitExceededException {
-        MqttSubscriptionTree<String> tree = new MqttSubscriptionTree<String>(MqttSubscriptionTree.DEFAULT_SPLIT, true);
-        tree.withWildcard(MqttSubscriptionTree.DEFAULT_WILDCARD);
-        tree.withWildpath(MqttSubscriptionTree.DEFAULT_WILDPATH);
+    public static void main(String[] args) throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = new MqttTree<String>(MqttTree.DEFAULT_SPLIT, true);
+        tree.withWildcard(MqttTree.DEFAULT_WILDCARD);
+        tree.withWildpath(MqttTree.DEFAULT_WILDPATH);
 
         tree.withMaxPathSegments(1024);
         tree.withMaxMembersAtLevel(1024);
