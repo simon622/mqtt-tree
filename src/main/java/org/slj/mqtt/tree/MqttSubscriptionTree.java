@@ -108,7 +108,7 @@ public class MqttSubscriptionTree<T> {
         return this;
     }
 
-    public void addPath(final String path, final T... members) throws MqttSubscriptionTreeLimitExceededException {
+    public void addSubscription(final String path, final T... members) throws MqttSubscriptionTreeLimitExceededException {
 
         if(path == null) throw new NullPointerException("unable to add <null> path to tree");
 
@@ -133,14 +133,10 @@ public class MqttSubscriptionTree<T> {
         }
     }
 
-    public void removeMemberFromPath(final String path, T member){
-        String[] segments = split(path);
-        TrieNode<T> node = root;
-        for (int i=0; i<segments.length; i++){
-            node = node.getChild(segments[i]);
-        }
+    public void removeSubscriptionFromPath(final String path, T member){
+        TrieNode<T> node = getNodeIfExists(path);
         if(node != null){
-            //if the leaf now contains no members, cut the leaf off the tree
+            //if the leaf now contains no members AND its not a branch, cut the leaf off the tree
             if(node.removeMember(member) && selfPruningTree &&
                     node.getMembers().isEmpty() && !node.hasChildren()){
                 node.getParent().removeChild(node);
@@ -158,7 +154,11 @@ public class MqttSubscriptionTree<T> {
         return node == null ? false: node.hasMembers();
     }
 
-    protected TrieNode<T> getNodeIfExists(final String path){
+    public boolean hasPath(String path){
+        return getNodeIfExists(path) != null;
+    }
+
+    protected final TrieNode<T> getNodeIfExists(final String path){
 
         String[] segments = split(path);
         TrieNode node = root;
@@ -169,20 +169,6 @@ public class MqttSubscriptionTree<T> {
             }
         }
         return node;
-    }
-
-    public boolean hasPath(String path){
-        String[] segments = split(path);
-        TrieNode node = root;
-        boolean pathExists = true;
-        for (int i=0; i < segments.length; i++){
-            node = node.getChild(segments[i]);
-            if(node == null) {
-                pathExists = false;
-                break;
-            }
-        }
-        return pathExists;
     }
 
     public static void visitChildren(MqttSubscriptionTree.TrieNode node, Visitor visitor) {
