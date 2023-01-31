@@ -449,7 +449,7 @@ public class MqttTree<T> {
                         removed.clear();
                     } else {
                         //only add clear the node if the removed node matched (it may have been recreated
-                        //under high load
+                        //under high load)
                     }
                 }
                 node.parent = null;

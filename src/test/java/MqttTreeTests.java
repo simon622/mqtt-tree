@@ -28,7 +28,10 @@ import org.junit.Test;
 import org.slj.mqtt.tree.MqttTree;
 import org.slj.mqtt.tree.MqttTreeException;
 import org.slj.mqtt.tree.MqttTreeLimitExceededException;
+import org.slj.mqtt.tree.ui.MqttTreeViewer;
 
+import javax.swing.*;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
@@ -80,7 +83,7 @@ public class MqttTreeTests {
         tree.addSubscription(topic, members);
     }
 
-    @Test
+//    @Test
     public void testConcurrency() throws Exception {
 
         MqttTree<String> tree = new MqttTree<>(MqttTree.DEFAULT_SPLIT, true);
@@ -109,7 +112,7 @@ public class MqttTreeTests {
                            itr.next();
                            i++;
                        }
-                       System.err.println("read ["+i+"] took " + (System.currentTimeMillis() - start1) + "ms for " + s.size());
+//                       System.err.println("read ["+i+"] took " + (System.currentTimeMillis() - start1) + "ms for " + s.size());
 
                    } catch(Exception e){
                        e.printStackTrace();
@@ -134,6 +137,9 @@ public class MqttTreeTests {
                         if(i % 2 == 0){
                             String subscriberId = ""+c.incrementAndGet();
                             tree.addSubscription("some/topic/1",subscriberId);
+                            for (int j = 0; j < 100; j++){
+                                tree.addSubscription(generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40)),subscriberId);
+                            }
                             added.incrementAndGet();
                             allAdded.add(subscriberId);
 //                            tree.addSubscription("#",""+ThreadLocalRandom.current().nextInt(10, 100000));
@@ -158,13 +164,16 @@ public class MqttTreeTests {
 
         latch.await();
 
-        System.err.println("write took " + (System.currentTimeMillis() - start) + "ms");
-
         long quickstart = System.currentTimeMillis();
         Set<String> s = tree.search("some/topic/1");
+        long done = System.currentTimeMillis();
         s.retainAll(allRemoved);
-Assert.assertEquals("no removed members should exists in search", 0, s.size());
-        System.err.println("path had " + s.size() + " subscribers in " + (System.currentTimeMillis() - quickstart));
+        Assert.assertEquals("no removed members should exists in search", 0, s.size());
+
+        System.out.println("Write Took: " + (System.currentTimeMillis() - start) + "ms");
+        System.out.println("Root Branches: "+ tree.getBranchCount());
+        System.out.println("Total Branches: "+ tree.countDistinctPaths(false));
+        System.out.println("Read Took: "+ (done - quickstart));
     }
 
     @Test

@@ -20,6 +20,8 @@ available for others who may need to same thing.
 Typical use would be to index your client session subscriptions using this tree for exceptionally fast lookup of subscriptions
 in high load environments. Modifications and Reads are entirely synchronized and can be performed without external synchronization.
 
+![Screenshot](/ext/mqtt-tree.png)
+
 ## Memory & Time Performance
 The tree uses a Tries algorithm internally (prefix tree), where each level of the tree is a normalized path segment. Thus a million subscriptions to the
 same topic path would only result in that topic path being stored once. Branch nodes along the path will diverge where new path segments are added. Therefore
