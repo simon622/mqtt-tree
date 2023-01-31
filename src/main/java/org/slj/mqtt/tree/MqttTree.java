@@ -185,18 +185,46 @@ public class MqttTree<T> {
         return node;
     }
 
-    public static void visitChildren(MqttTree.TrieNode node, Visitor visitor) {
+    public void visitChildren(MqttTreeNodeVisitor visitor) {
+        visitChildren(root, visitor);
+    }
+
+    private static void visitChildren(MqttTreeNode node, MqttTreeNodeVisitor visitor) {
         if (node != null) {
             Set<String> children = node.getChildPaths();
             Iterator<String> itr = children.iterator();
             while (itr.hasNext()) {
                 String path = itr.next();
-                MqttTree.TrieNode child = node.getChild(path);
+                MqttTreeNode child = node.getChild(path);
                 if (child == null) {
                     throw new RuntimeException("encountered invalid tree state");
                 } else {
                     visitChildren(child, visitor);
                     visitor.visit(child);
+                }
+            }
+        }
+    }
+
+    public MqttTreeNode<T> getRootNode(){
+        return root;
+    }
+
+    public void visit(MqttTreeNodeVisitor visitor) {
+        visit(root, visitor);
+    }
+    private static void visit(MqttTreeNode node, MqttTreeNodeVisitor visitor) {
+        if (node != null) {
+            visitor.visit(node);
+            Set<String> children = node.getChildPaths();
+            Iterator<String> itr = children.iterator();
+            while (itr.hasNext()) {
+                String path = itr.next();
+                MqttTreeNode child = node.getChild(path);
+                if (child == null) {
+                    throw new RuntimeException("encountered invalid tree state");
+                } else {
+                    visit(child, visitor);
                 }
             }
         }
@@ -332,7 +360,7 @@ public class MqttTree<T> {
         return MqttTreeUtils.splitPathRetainingSplitChar(path, split);
     }
 
-    class TrieNode<T> {
+    public class TrieNode<T> implements MqttTreeNode{
         private volatile Map<String, TrieNode<T>> children;
         private String pathSegment;
         private volatile Set<T> members;
@@ -404,6 +432,10 @@ public class MqttTree<T> {
 
         public String getPathSegment(){
             return pathSegment;
+        }
+
+        public int getMemberCount(){
+            return memberCount.get();
         }
 
         public void removeChild(TrieNode node){
@@ -485,6 +517,8 @@ public class MqttTree<T> {
 
         @Override
         public String toString() {
+
+//            return pathSegment + " ("+memberCount.get()+")";
             return "TrieNode{" +
                     "pathSegment='" + pathSegment + '\'' +
                     ", parent=" + parent +
@@ -528,10 +562,5 @@ public class MqttTree<T> {
             return result;
         }
     }
-}
-
-interface Visitor {
-
-    void visit(MqttTree.TrieNode node);
 }
 

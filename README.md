@@ -10,7 +10,7 @@ in a highly concurrent environment.
 4. [Example Usage](#example-usage)
    
 ## About
-Broker and gateway implementations of MQTT will all need to ability to quickly and efficiently look up subscriptions. Subscriptions
+Broker and gateway implementations of MQTT will all need the ability to quickly and efficiently look up subscriptions. Subscriptions
 should be indexed (these contain wildcard characters) and then PUBLISH paths (which do not) ask the tree for all those subscriptions
 held matching the PUBLISH topic.
 
