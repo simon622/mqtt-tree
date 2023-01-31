@@ -134,17 +134,19 @@ public class MqttTree<T> {
         }
     }
 
-    public void removeSubscriptionFromPath(final String path, T member) throws MqttTreeException {
-
+    public boolean removeSubscriptionFromPath(final String path, T member) throws MqttTreeException {
         if(path == null || path.length() == 0) throw new MqttTreeException("invalid subscription path");
         TrieNode<T> node = getNodeIfExists(path);
         if(node != null){
             //if the leaf now contains no members AND its not a branch, cut the leaf off the tree
-            if(node.removeMember(member) && selfPruningTree &&
+            boolean removed = node.removeMember(member);
+            if(removed && selfPruningTree &&
                     node.getMembers().isEmpty() && !node.hasChildren()){
                 node.getParent().removeChild(node);
             }
+            return removed;
         }
+        return false;
     }
 
     public Set<T> search(final String path)
@@ -362,8 +364,8 @@ public class MqttTree<T> {
 
     public class TrieNode<T> implements MqttTreeNode{
         private volatile Map<String, TrieNode<T>> children;
-        private String pathSegment;
         private volatile Set<T> members;
+        private String pathSegment;
         private TrieNode parent;
         private final boolean isRoot;
         private final Object memberMutex = new Object();
@@ -439,13 +441,15 @@ public class MqttTree<T> {
         }
 
         public void removeChild(TrieNode node){
-            if(children != null && children.containsKey(node.pathSegment)){
+            if(children != null &&
+                    children.containsKey(node.pathSegment)){
                 synchronized (childrenMutex){
                     TrieNode removed = children.remove(node.pathSegment);
-                    if(removed != node){
-                        throw new RuntimeException("node removal inconsistency");
-                    } else {
+                    if(removed == node){
                         removed.clear();
+                    } else {
+                        //only add clear the node if the removed node matched (it may have been recreated
+                        //under high load
                     }
                 }
                 node.parent = null;
@@ -482,13 +486,16 @@ public class MqttTree<T> {
             }
         }
         public boolean removeMember(T member){
-            boolean removed = members.remove(member);
-            if(removed) memberCount.decrementAndGet();
-            return removed;
+            if(members != null){
+                boolean removed = members.remove(member);
+                if(removed) memberCount.decrementAndGet();
+                return removed;
+            }
+            return false;
         }
 
         public Set<T> getMembers(){
-            if(members == null){
+            if(members == null || parent == null){
                 return Collections.emptySet();
             } else {
                 long start = System.currentTimeMillis();
@@ -517,8 +524,6 @@ public class MqttTree<T> {
 
         @Override
         public String toString() {
-
-//            return pathSegment + " ("+memberCount.get()+")";
             return "TrieNode{" +
                     "pathSegment='" + pathSegment + '\'' +
                     ", parent=" + parent +

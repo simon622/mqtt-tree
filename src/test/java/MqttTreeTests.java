@@ -29,10 +29,7 @@ import org.slj.mqtt.tree.MqttTree;
 import org.slj.mqtt.tree.MqttTreeException;
 import org.slj.mqtt.tree.MqttTreeLimitExceededException;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,7 +80,7 @@ public class MqttTreeTests {
         tree.addSubscription(topic, members);
     }
 
-//    @Test
+    @Test
     public void testConcurrency() throws Exception {
 
         MqttTree<String> tree = new MqttTree<>(MqttTree.DEFAULT_SPLIT, true);
@@ -92,42 +89,67 @@ public class MqttTreeTests {
         tree.withMaxMembersAtLevel(1000000);
 
         int loops = 100;
-        int threads = 50;
+        int threads = 100;
         CountDownLatch latch = new CountDownLatch(loops * threads);
         final long start = System.currentTimeMillis();
         AtomicInteger c = new AtomicInteger();
-        AtomicInteger subCount = new AtomicInteger();
+
+        //read thread
+        Thread readThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+               while(true){
+                   try {
+                       long start1 = System.currentTimeMillis();
+                       Set<String> s = tree.search("some/topic/1");
+
+                       Iterator<String> itr = s.iterator();
+                       int i = 0;
+                       while(itr.hasNext()){
+                           itr.next();
+                           i++;
+                       }
+                       System.err.println("read ["+i+"] took " + (System.currentTimeMillis() - start1) + "ms for " + s.size());
+
+                   } catch(Exception e){
+                       e.printStackTrace();
+                       Assert.fail(e.getMessage());
+                   }
+                }
+            }
+        });
+        readThread.start();
+
+        AtomicInteger added = new AtomicInteger();
+        AtomicInteger removed = new AtomicInteger();
+        AtomicInteger total = new AtomicInteger();
+
+        final Set<String> allAdded = Collections.synchronizedSet(new HashSet());
+        final Set<String> allRemoved = Collections.synchronizedSet(new HashSet());
 
         for(int t = 0;  t < threads; t++){
             Thread tt = new Thread(() -> {
                 for (int i = 0; i < loops; i++){
                     try {
-                        String subscriberId = ""+c.incrementAndGet();
                         if(i % 2 == 0){
+                            String subscriberId = ""+c.incrementAndGet();
                             tree.addSubscription("some/topic/1",subscriberId);
-                            tree.addSubscription("some/topic/2",subscriberId);
-                            tree.addSubscription("some/topic/3",subscriberId);
-                            tree.addSubscription("some/+/2",""+c.incrementAndGet());
-                            tree.addSubscription("#",""+c.incrementAndGet());
-                            subCount.getAndAdd(5);
+                            added.incrementAndGet();
+                            allAdded.add(subscriberId);
+//                            tree.addSubscription("#",""+ThreadLocalRandom.current().nextInt(10, 100000));
                         } else {
-                            for(int r = 0; r < 1000; r++){
-                                long start1 = System.currentTimeMillis();
-                                Set<?> s = tree.search("some/topic/1");
-                                if(System.currentTimeMillis() - start1 > 100){
-                                    System.err.println("read took " + (System.currentTimeMillis() - start1) + "ms for " + s.size());
-                                }
+
+                            String subId = c.get() + "";
+                            if(tree.removeSubscriptionFromPath("some/topic/1", subId)){
+                                removed.incrementAndGet();
+                                allRemoved.add(subId);
                             }
                         }
-
                     } catch(Exception e){
                         e.printStackTrace();
                     } finally {
                         latch.countDown();
-                        long cl = subCount.get();
-                        if(cl % 100 == 0){
-                            System.out.println("added " + cl + " subscribers in total in " + (System.currentTimeMillis() - start) + "ms");
-                        }
+                        total.incrementAndGet();
                     }
                 }
             });
@@ -139,9 +161,10 @@ public class MqttTreeTests {
         System.err.println("write took " + (System.currentTimeMillis() - start) + "ms");
 
         long quickstart = System.currentTimeMillis();
-        Set<String> s = tree.search("some/topic/2");
+        Set<String> s = tree.search("some/topic/1");
+        s.retainAll(allRemoved);
+Assert.assertEquals("no removed members should exists in search", 0, s.size());
         System.err.println("path had " + s.size() + " subscribers in " + (System.currentTimeMillis() - quickstart));
-        Assert.assertEquals("member output should match",7500, s.size());
     }
 
     @Test
