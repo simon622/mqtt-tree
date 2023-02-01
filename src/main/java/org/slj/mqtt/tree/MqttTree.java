@@ -392,7 +392,9 @@ public class MqttTree<T> {
             if(children == null) {
                 synchronized (childrenMutex) {
                     if (children == null) {
-                        children = new ConcurrentHashMap<>(isRoot() ? 1024 : 4);
+                        //size the child map according to being '/'
+                        //root has invariable 1 child '/' and '/' has many children
+                        children = new ConcurrentHashMap<>(parent != null && parent.isRoot() ? 1024 : 4);
                     }
                 }
             }
