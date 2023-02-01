@@ -1,4 +1,6 @@
 
+![Logo](/ext/SLJ-MQTT-TREE.png)
+
 # MQTT Tree
 MQTT Tree is a dependency free java implementation, designed to be used for storing, matching and retrieving MQTT subscriptions
 in a highly concurrent environment.
