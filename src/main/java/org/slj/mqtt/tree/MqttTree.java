@@ -126,6 +126,9 @@ public class MqttTree<T> {
 
         TrieNode<T> node = root;
         for (int i=0; i<segments.length; i++){
+            if(node == null){
+                throw new MqttTreeException("invalid tree state, node didnt exist");
+            }
             if(i == segments.length - 1){
                 node = node.addChild(segments[i], members);
             } else {
@@ -382,27 +385,22 @@ public class MqttTree<T> {
             }
         }
 
-        public TrieNode addChild(final String pathSegment, final T... membersIn) throws MqttTreeLimitExceededException {
+        public TrieNode addChild(final String pathSegment, final T... membersIn)
+                throws MqttTreeLimitExceededException {
             if(pathSegment == null) throw new IllegalArgumentException("unable to mount <null> leaf to tree");
             TrieNode child;
             if(children == null) {
                 synchronized (childrenMutex) {
                     if (children == null) {
-                        children = new HashMap(4);
+                        children = new ConcurrentHashMap<>(isRoot() ? 1024 : 4);
                     }
                 }
             }
             if(!children.containsKey(pathSegment)){
-                synchronized (childrenMutex){
-                    if(!children.containsKey(pathSegment)){
-                        child = new TrieNode<>(this, pathSegment);
-                        children.put(pathSegment, child);
-                    } else {
-                        child = getChild(pathSegment);
-                    }
-                }
+                child = new TrieNode<>(this, pathSegment);
+                children.put(pathSegment, child);
             } else {
-                child = getChild(pathSegment);
+                child = children.get(pathSegment);
             }
             if(membersIn.length > 0) child.addMembers(membersIn);
             return child;
@@ -512,7 +510,7 @@ public class MqttTree<T> {
             if(children == null){
                 return Collections.emptySet();
             } else {
-                synchronized (children){
+                synchronized (childrenMutex){
                     return Collections.unmodifiableSet(children.keySet());
                 }
             }

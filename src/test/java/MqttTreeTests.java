@@ -105,14 +105,17 @@ public class MqttTreeTests {
                    try {
                        long start1 = System.currentTimeMillis();
                        Set<String> s = tree.search("some/topic/1");
-
                        Iterator<String> itr = s.iterator();
                        int i = 0;
                        while(itr.hasNext()){
                            itr.next();
                            i++;
                        }
-//                       System.err.println("read ["+i+"] took " + (System.currentTimeMillis() - start1) + "ms for " + s.size());
+                       long t = System.currentTimeMillis() - start;
+                       if(t > 250){
+//                           Thread.sleep(1000);
+//                            System.err.println("read ["+i+"] took " + t + "ms for " + s.size());
+                       }
 
                    } catch(Exception e){
                        e.printStackTrace();
@@ -166,10 +169,12 @@ public class MqttTreeTests {
 
         long quickstart = System.currentTimeMillis();
         Set<String> s = tree.search("some/topic/1");
+        long size = s.size();
         long done = System.currentTimeMillis();
         s.retainAll(allRemoved);
         Assert.assertEquals("no removed members should exists in search", 0, s.size());
 
+        System.out.println("Read Took: " + (done - quickstart) + "ms for ["+size+"] items");
         System.out.println("Write Took: " + (System.currentTimeMillis() - start) + "ms");
         System.out.println("Root Branches: "+ tree.getBranchCount());
         System.out.println("Total Branches: "+ tree.countDistinctPaths(false));
