@@ -72,11 +72,16 @@ public class MqttSpecificationTests extends AbstractMqttTreeTests {
                 tree.search("foo").size() == 1);
     }
 
-//    @Test(expected = MqttTreeInputException.class)
+    @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample3() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        //TODO :FIX ME
         tree.addSubscription("+/tennis/#", "Client");
+
+        Assert.assertTrue("subscription should exist",
+                tree.search("foo/tennis/player1").size() == 1);
+
+        Assert.assertTrue("subscription should NOT exist",
+                tree.search("foo/ten/player1").size() == 0);
     }
 
     @Test(expected = MqttTreeInputException.class)
