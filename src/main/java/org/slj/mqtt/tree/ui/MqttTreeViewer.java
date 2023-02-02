@@ -76,14 +76,14 @@ public class MqttTreeViewer  extends JFrame {
             }
         }
 
-
-
-//        for (int i = 0; i < tree.getRowCount(); i++) {
-//            tree.expandRow(i);
-//        }
-
         tree.repaint();
         tree.updateUI();
+
+        for (int i = 0; i < tree.getRowCount(); i++) {
+            tree.expandRow(i);
+            if(i > 10)
+                break;
+        }
     }
 
     protected DefaultMutableTreeNode findChildByUserObject(DefaultMutableTreeNode parent, MqttTreeNode node){
