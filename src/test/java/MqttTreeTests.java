@@ -121,6 +121,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     @Test
     public void testEmptySeg() throws MqttTreeException, MqttTreeLimitExceededException {
 
+        //This is the known issue
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("a/+/b", "foo");
         Assert.assertEquals("expected", 1, tree.search("a//b").size());
@@ -131,6 +132,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     @Test
     public void testMultiPathSepUC1() throws MqttTreeException, MqttTreeLimitExceededException {
 
+        //This is the known issue
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("+/+/+/+/+/+", "Client1");
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
