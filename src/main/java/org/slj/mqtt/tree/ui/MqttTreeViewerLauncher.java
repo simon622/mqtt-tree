@@ -12,12 +12,10 @@ public class MqttTreeViewerLauncher {
 
         ISearchableMqttTree<String> tree = new SearchableMqttTree(
                 new MqttTree<String>(MqttTree.DEFAULT_SPLIT, true));
-        tree.addSubscription("/some/path/with/some/members", "Member1");
-        tree.addSubscription("/some/other/with/some/members", "Member1");
-        tree.addSubscription("another/topic/without/leading/slash", "Member1");
-        tree.addSubscription("another/#", "Member1");
-        tree.addSubscription("another/+/with/something/else", "Member1");
 
+        for (int i=0; i<1000; i++){
+            tree.addSubscription(MqttTreeUtils.generateRandomTopic(20), "SomeClientId");
+        }
 
         SwingUtilities.invokeLater(new Runnable() {
             @Override

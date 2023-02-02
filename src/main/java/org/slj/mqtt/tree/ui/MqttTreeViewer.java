@@ -75,6 +75,13 @@ public class MqttTreeViewer  extends JFrame {
                 }
             }
         }
+
+
+
+//        for (int i = 0; i < tree.getRowCount(); i++) {
+//            tree.expandRow(i);
+//        }
+
         tree.repaint();
         tree.updateUI();
     }
@@ -138,13 +145,19 @@ public class MqttTreeViewer  extends JFrame {
         searchBar.addMouseListener(new MouseListener() {
                    @Override
                    public void mouseClicked(MouseEvent e) {
-                       try {
-                           initTree();
-                       } catch (IOException ex) {
-                           throw new RuntimeException(ex);
+                       if(!initialised){
+                           searchBar.setText("");
+                           initialised = true;
                        }
-                       searchBar.setText("");
-                       initialised = true;
+
+                       if(searchBar.getText().equals("")){
+                           try {
+                               initTree();
+                           } catch (IOException ex) {
+                               throw new RuntimeException(ex);
+                           }
+                       }
+
                    }
 
                    @Override

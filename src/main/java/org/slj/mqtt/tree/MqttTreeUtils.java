@@ -3,6 +3,7 @@ package org.slj.mqtt.tree;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 
 /**
@@ -141,5 +142,16 @@ public class MqttTreeUtils {
 
     public static void main(String[] args) {
         System.err.println(Arrays.toString(splitPathRetainingSplitChar("/this/is/my/string//", '/')));
+    }
+
+    public static String generateRandomTopic(int segments){
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < segments; i++){
+            if(i == 0) sb.append("/");
+            int r = ThreadLocalRandom.current().nextInt(0, 1000);
+            sb.append(r);
+            sb.append("/");
+        }
+        return sb.toString();
     }
 }
