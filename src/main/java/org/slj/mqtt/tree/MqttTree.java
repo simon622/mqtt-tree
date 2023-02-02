@@ -178,7 +178,6 @@ public class MqttTree<T> {
         }
 
         String[] segments = split(path);
-System.err.println(Arrays.toString(segments));
         return searchTreeForMembers(root, segments);
     }
 

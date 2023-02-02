@@ -218,6 +218,8 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("/+/+/+/+/", "Client1");
 System.err.println(tree.getDistinctPaths(true));
+        Assert.assertEquals("should have subscription", 1, tree.search("/seg1/seg2/seg3/seg4/").size());
+        Assert.assertEquals("should have subscription", 0, tree.search("/seg1/seg2/seg3/seg4/bar").size());
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
     }
 
