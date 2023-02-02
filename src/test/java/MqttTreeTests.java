@@ -31,8 +31,6 @@ import org.slj.mqtt.tree.MqttTreeInputException;
 import org.slj.mqtt.tree.MqttTreeLimitExceededException;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -83,109 +81,32 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         tree.addSubscription(topic, members);
     }
 
-//    @Test
-    public void testConcurrency() throws Exception {
-
-        MqttTree<String> tree = createTreeDefaultConfig();
-        tree.withMaxMembersAtLevel(1000000);
-
-        int loops = 100;
-        int threads = 100;
-        CountDownLatch latch = new CountDownLatch(loops * threads);
-        final long start = System.currentTimeMillis();
-        AtomicInteger c = new AtomicInteger();
-        AtomicInteger totalReads = new AtomicInteger();
-
-        final List<String> allAddedPaths = Collections.synchronizedList(new ArrayList<>());
-
-        //read thread
-        Thread readThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-               while(true){
-                   try {
-                       int size = allAddedPaths.size();
-                       if(size == 0) continue;
-                       String path = allAddedPaths.get(ThreadLocalRandom.current().nextInt(0, allAddedPaths.size()));
-                       Set<String> s = tree.search(path);
-
-                       totalReads.incrementAndGet();
-                       Iterator<String> itr = s.iterator();
-                       while(itr.hasNext()){
-                           itr.next();
-                       }
-
-                   } catch(Exception e){
-                       e.printStackTrace();
-                       Assert.fail(e.getMessage());
-                   }
-                }
-            }
-        });
-        readThread.start();
-
-        AtomicInteger added = new AtomicInteger();
-        AtomicInteger removed = new AtomicInteger();
-        AtomicInteger total = new AtomicInteger();
-
-        final Set<String> allRemoved = Collections.synchronizedSet(new HashSet());
-
-        for(int t = 0;  t < threads; t++){
-            Thread tt = new Thread(() -> {
-                for (int i = 0; i < loops; i++){
-                    try {
-                        if(i % 2 == 0){
-                            String subscriberId = ""+c.incrementAndGet();
-                            tree.addSubscription("some/topic/1",subscriberId);
-                            for (int j = 0; j < 100; j++){
-                                String sub = generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40));
-                                tree.addSubscription(sub,subscriberId);
-                                allAddedPaths.add(sub);
-                            }
-                            added.incrementAndGet();
-//                            tree.addSubscription("#",""+ThreadLocalRandom.current().nextInt(10, 100000));
-                        } else {
-
-                            String subId = c.get() + "";
-                            if(tree.removeSubscriptionFromPath("some/topic/1", subId)){
-                                removed.incrementAndGet();
-                                allRemoved.add(subId);
-                            }
-                        }
-                    } catch(Exception e){
-                        e.printStackTrace();
-                    } finally {
-                        latch.countDown();
-                        total.incrementAndGet();
-                    }
-                }
-            });
-            tt.start();
-        }
-
-        latch.await();
-
-        long quickstart = System.currentTimeMillis();
-        Set<String> s = tree.search("some/topic/1");
-        long size = s.size();
-        long done = System.currentTimeMillis();
-        s.retainAll(allRemoved);
-        Assert.assertEquals("no removed members should exists in search", 0, s.size());
-
-        System.out.println("Read Took: " + (done - quickstart) + "ms for ["+size+"] items");
-        System.out.println("Write Took: " + (System.currentTimeMillis() - start) + "ms");
-        System.out.println("Root Branches: "+ tree.getBranchCount());
-        System.out.println("Total Branches: "+ tree.countDistinctPaths(false));
-        System.out.println("Read Took: "+ (done - quickstart));
-        System.out.println("Total Reads: "+ (totalReads));
-    }
-
     @Test
     public void testTopLevelTokenMatch() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("/", "foo");
-        Assert.assertEquals("first level is a token", 1, tree.search("/").size());
+        searchExpecting(tree, "/", "foo", 1);
+    }
+
+    @Test
+    public void testArbitraryMatch() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("foo/", "foo", "foo2");
+        tree.addSubscription("/", "bar");
+        tree.addSubscription("foo/bar/client1", "client1");
+        tree.addSubscription("foo/bar/client2", "client2");
+        tree.addSubscription("foo/bar/client3", "client3");
+        tree.addSubscription("foo/bar/client4", "client4");
+
+        searchExpecting(tree, "/", "bar", 1);
+        searchExpecting(tree, "foo/", "foo2", 2);
+        searchExpecting(tree, "foo/bar/client1", "client1", 1);
+        searchExpecting(tree, "foo/bar/client2", "client2", 1);
+        searchExpecting(tree, "foo/bar/client3", "client3", 1);
+        searchExpecting(tree, "foo/bar/client4", "client4", 1);
+
     }
 
     @Test
@@ -196,15 +117,31 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         Assert.assertEquals("first level is a token", 1, tree.search("/////").size());
     }
 
-//    @Test
+
+    @Test
+    public void testEmptySeg() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("a/+/b", "foo");
+        Assert.assertEquals("expected", 1, tree.search("a//b").size());
+        Assert.assertEquals("not expected", 0, tree.search("a///b").size());
+    }
+
+
+    @Test
     public void testMultiPathSepUC1() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("+/+/+/+/+/+", "Client1");
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
+        Assert.assertEquals("should have subscription", 1, tree.search("foo/////bar").size());
+        Assert.assertEquals("should NOT have subscription", 0, tree.search("///////").size());
+        Assert.assertEquals("should NOT have subscription", 0, tree.search("///////////").size());
+        Assert.assertEquals("should NOT have subscription", 0, tree.search("////").size());
+        Assert.assertEquals("should NOT have subscription", 0, tree.search("////////////").size());
     }
 
-//    @Test
+    @Test
     public void testMultiPathSepUC2() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
@@ -212,12 +149,11 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
     }
 
-//    @Test
+    @Test
     public void testMultiPathSepUC3() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("/+/+/+/+/", "Client1");
-System.err.println(tree.getDistinctPaths(true));
         Assert.assertEquals("should have subscription", 1, tree.search("/seg1/seg2/seg3/seg4/").size());
         Assert.assertEquals("should have subscription", 0, tree.search("/seg1/seg2/seg3/seg4/bar").size());
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
@@ -359,4 +295,101 @@ System.err.println(tree.getDistinctPaths(true));
         Assert.assertEquals("path count should match", 200_000_2, tree.countDistinctPaths(false));
     }
 
+
+    //    @Test
+    public void testConcurrency() throws Exception {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.withMaxMembersAtLevel(1000000);
+
+        int loops = 100;
+        int threads = 100;
+        CountDownLatch latch = new CountDownLatch(loops * threads);
+        final long start = System.currentTimeMillis();
+        AtomicInteger c = new AtomicInteger();
+        AtomicInteger totalReads = new AtomicInteger();
+
+        final List<String> allAddedPaths = Collections.synchronizedList(new ArrayList<>());
+
+        //read thread
+        Thread readThread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while(true){
+                    try {
+                        int size = allAddedPaths.size();
+                        if(size == 0) continue;
+                        String path = allAddedPaths.get(ThreadLocalRandom.current().nextInt(0, allAddedPaths.size()));
+                        Set<String> s = tree.search(path);
+
+                        totalReads.incrementAndGet();
+                        Iterator<String> itr = s.iterator();
+                        while(itr.hasNext()){
+                            itr.next();
+                        }
+
+                    } catch(Exception e){
+                        e.printStackTrace();
+                        Assert.fail(e.getMessage());
+                    }
+                }
+            }
+        });
+        readThread.start();
+
+        AtomicInteger added = new AtomicInteger();
+        AtomicInteger removed = new AtomicInteger();
+        AtomicInteger total = new AtomicInteger();
+
+        final Set<String> allRemoved = Collections.synchronizedSet(new HashSet());
+
+        for(int t = 0;  t < threads; t++){
+            Thread tt = new Thread(() -> {
+                for (int i = 0; i < loops; i++){
+                    try {
+                        if(i % 2 == 0){
+                            String subscriberId = ""+c.incrementAndGet();
+                            tree.addSubscription("some/topic/1",subscriberId);
+                            for (int j = 0; j < 100; j++){
+                                String sub = generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40));
+                                tree.addSubscription(sub,subscriberId);
+                                allAddedPaths.add(sub);
+                            }
+                            added.incrementAndGet();
+//                            tree.addSubscription("#",""+ThreadLocalRandom.current().nextInt(10, 100000));
+                        } else {
+
+                            String subId = c.get() + "";
+                            if(tree.removeSubscriptionFromPath("some/topic/1", subId)){
+                                removed.incrementAndGet();
+                                allRemoved.add(subId);
+                            }
+                        }
+                    } catch(Exception e){
+                        e.printStackTrace();
+                    } finally {
+                        latch.countDown();
+                        total.incrementAndGet();
+                    }
+                }
+            });
+            tt.start();
+        }
+
+        latch.await();
+
+        long quickstart = System.currentTimeMillis();
+        Set<String> s = tree.search("some/topic/1");
+        long size = s.size();
+        long done = System.currentTimeMillis();
+        s.retainAll(allRemoved);
+        Assert.assertEquals("no removed members should exists in search", 0, s.size());
+
+        System.out.println("Read Took: " + (done - quickstart) + "ms for ["+size+"] items");
+        System.out.println("Write Took: " + (System.currentTimeMillis() - start) + "ms");
+        System.out.println("Root Branches: "+ tree.getBranchCount());
+        System.out.println("Total Branches: "+ tree.countDistinctPaths(false));
+        System.out.println("Read Took: "+ (done - quickstart));
+        System.out.println("Total Reads: "+ (totalReads));
+    }
 }

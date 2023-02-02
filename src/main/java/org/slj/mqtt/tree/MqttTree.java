@@ -287,13 +287,26 @@ public class MqttTree<T> implements IMqttTree<T> {
             TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
             if(wildPathNodeAtLevel != null){
                 String[] remainingSegments =
-                        Arrays.copyOfRange(segments, i + 1, segments.length);
+                        Arrays.copyOfRange(segments, i+1, segments.length);
                 //recurse point
                 Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
                 if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
                     if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
                     wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
                 }
+
+                //read a node forward
+                if(wildPathNodeAtLevel.hasChild(splitStr)){
+                    remainingSegments =
+                            Arrays.copyOfRange(segments, i, segments.length);
+
+                    wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
+                    if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
+                        if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
+                        wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
+                    }
+                }
+
             }
 
             node = node.getChild(segments[i]);
