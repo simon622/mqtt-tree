@@ -25,4 +25,6 @@ public interface MqttTreeNode<T> {
     int getMemberCount();
 
     String getPathSegment();
+
+    MqttTreeNode getParent();
 }

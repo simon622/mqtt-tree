@@ -25,10 +25,7 @@
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.slj.mqtt.tree.MqttTree;
-import org.slj.mqtt.tree.MqttTreeException;
-import org.slj.mqtt.tree.MqttTreeInputException;
-import org.slj.mqtt.tree.MqttTreeLimitExceededException;
+import org.slj.mqtt.tree.*;
 
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -298,11 +295,13 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     }
 
 
-    //    @Test
+        @Test
     public void testConcurrency() throws Exception {
 
-        MqttTree<String> tree = createTreeDefaultConfig();
-        tree.withMaxMembersAtLevel(1000000);
+        MqttTree<String> mqttTree = createTreeDefaultConfig();
+        mqttTree.withMaxMembersAtLevel(1000000);
+
+        IMqttTree<String> tree = new SearchableMqttTree(mqttTree);
 
         int loops = 100;
         int threads = 100;

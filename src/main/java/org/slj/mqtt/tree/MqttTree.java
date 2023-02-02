@@ -127,7 +127,7 @@ public class MqttTree<T> implements IMqttTree<T> {
         return this;
     }
 
-    public void addSubscription(final String path, final T... members)
+    public MqttTreeNode<T>  addSubscription(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException {
 
         if(!MqttTreeUtils.isValidSubscriptionTopic(path, maxPathSize)){
@@ -153,6 +153,7 @@ public class MqttTree<T> implements IMqttTree<T> {
                 node = node.addChild(segments[i]);
             }
         }
+        return node;
     }
 
     public boolean removeSubscriptionFromPath(final String path, T member) throws MqttTreeException {

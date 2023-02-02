@@ -4,7 +4,7 @@ import java.util.Set;
 
 public interface IMqttTree<T> {
 
-    void addSubscription(final String path, final T... members)
+    MqttTreeNode<T> addSubscription(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException;
 
     boolean removeSubscriptionFromPath(final String path, T member)

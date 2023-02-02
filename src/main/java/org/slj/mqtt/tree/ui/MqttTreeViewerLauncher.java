@@ -1,8 +1,6 @@
 package org.slj.mqtt.tree.ui;
 
-import org.slj.mqtt.tree.MqttTree;
-import org.slj.mqtt.tree.MqttTreeException;
-import org.slj.mqtt.tree.MqttTreeLimitExceededException;
+import org.slj.mqtt.tree.*;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -12,7 +10,8 @@ public class MqttTreeViewerLauncher {
 
     public static void main(String[] args) throws MqttTreeLimitExceededException, MqttTreeException {
 
-        MqttTree<String> tree = new MqttTree<String>(MqttTree.DEFAULT_SPLIT, true);
+        ISearchableMqttTree<String> tree = new SearchableMqttTree(
+                new MqttTree<String>(MqttTree.DEFAULT_SPLIT, true));
         tree.addSubscription("/some/path/with/some/members", "Member1");
         tree.addSubscription("/some/other/with/some/members", "Member1");
         tree.addSubscription("another/topic/without/leading/slash", "Member1");
