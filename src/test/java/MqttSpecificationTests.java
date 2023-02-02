@@ -5,6 +5,8 @@ import org.slj.mqtt.tree.MqttTreeException;
 import org.slj.mqtt.tree.MqttTreeInputException;
 import org.slj.mqtt.tree.MqttTreeLimitExceededException;
 
+import java.util.Set;
+
 public class MqttSpecificationTests extends AbstractMqttTreeTests {
 
     @Test
@@ -53,6 +55,8 @@ public class MqttSpecificationTests extends AbstractMqttTreeTests {
         MqttTree<String> tree = createTreeDefaultConfig();
         tree.addSubscription("sport/tennis/+", "Client");
 
+        System.err.println(tree.toTree(System.lineSeparator()));
+
         Assert.assertTrue("subscription should exist",
                 tree.search("sport/tennis/player1").size() == 1);
 
@@ -61,6 +65,20 @@ public class MqttSpecificationTests extends AbstractMqttTreeTests {
 
         Assert.assertTrue("subscription should NOT exist",
                 tree.search("sport/tennis/player1/ranking").size() == 0);
+    }
+
+    @Test
+    public void testSingleLevelSpecificationExamplesNonNormativeExample1b() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        //because the single-level wildcard matches only a single level, “sport/+” does not match “sport” but it does match “sport/”.
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("sport/+", "Client1");
+
+        Assert.assertTrue("subscription should NOT exist",
+                tree.search("sport").size() == 0);
+
+        Assert.assertTrue("subscription should exist",
+                tree.search("sport/").size() == 1);
     }
 
     @Test
@@ -100,26 +118,94 @@ public class MqttSpecificationTests extends AbstractMqttTreeTests {
                 tree.search("sport/any/player1").size() == 1);
     }
 
-//    @Test
+    @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample6() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        //“/finance” matches “+/+” and “/+”, but not “+”
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+/+", "Client");
-        tree.addSubscription("/+", "Client2");
-        tree.addSubscription("+", "Client3");
-//TODO: FIX ME
+        tree.addSubscription("+", "Client1");
+        tree.addSubscription("+/+", "Client2");
+        tree.addSubscription("/+", "Client3");
+
+        Set<String> s = tree.search("/finance");
+
         Assert.assertEquals("subscription should exist",
-                2, tree.search("/finance").size());
+                2, s.size());
     }
 
-    /*
+    @Test
+    public void testSingleLevelSpecificationExamplesNonNormativeExample6Edge() throws MqttTreeException, MqttTreeLimitExceededException {
 
-    Non-normative comment
-For example, “sport/tennis/+” matches “sport/tennis/player1” and “sport/tennis/player2”, but not “sport/tennis/player1/ranking”. Also, because the single-level wildcard matches only a single level, “sport/+” does not match “sport” but it does match “sport/”.
-•	 “+” is valid
-•	“+/tennis/#” is valid
-•	“sport+” is not valid
-•	“sport/+/player1” is valid
-•	“/finance” matches “+/+” and “/+”, but not “+”
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("+/+", "Client");
 
-     */
+        System.err.println(tree.getDistinctPaths(true));
+
+        Set<String> s = tree.search("/");
+        System.err.println(s);
+        Assert.assertEquals("subscription should exist",
+                1, s.size());
+    }
+
+    @Test(expected = MqttTreeInputException.class)
+    public void testSemanticExample1() throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("", "Client1");
+    }
+
+    @Test
+    public void testSemanticExample4() throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("/leading/", "Client1");
+        tree.addSubscription("leading/", "Not1");
+        tree.addSubscription("/leading", "Not2");
+
+        Set<String> m = tree.search("/leading/");
+        Assert.assertEquals("subscription should exist", 1,
+                m.size());
+
+        Assert.assertEquals("subscription should exist",
+                m.stream().findFirst().get(), "Client1");
+    }
+
+    @Test
+    public void testSemanticExample5() throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("/", "Client1");
+
+        Set<String> m = tree.search("/");
+        Assert.assertEquals("subscription should exist", 1,
+                m.size());
+
+        Assert.assertEquals("subscription should exist",
+                m.stream().findFirst().get(), "Client1");
+    }
+
+    @Test
+    public void testSemanticExample8() throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("ACCOUNTS", "Client1");
+        tree.addSubscription("accounts", "Client2");
+        Assert.assertEquals("should be 2 distinct branches", 2, tree.getBranchCount());
+        Assert.assertTrue("subscription should exist",
+                tree.search("ACCOUNTS").size() == 1);
+    }
+
+    @Test
+    public void testSemanticExample9() throws MqttTreeException, MqttTreeLimitExceededException {
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("Accounts payable", "Client1");
+        Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
+        Assert.assertTrue("subscription should exist",
+                tree.search("Accounts payable").size() == 1);
+
+        Assert.assertTrue("subscription should NOT exist",
+                tree.search("Accounts").size() == 0);
+
+        Assert.assertTrue("subscription should NOT exist",
+                tree.search("payable").size() == 0);
+
+        Assert.assertTrue("subscription should NOT exist",
+                tree.search("Accountspayable").size() == 0);
+    }
 }

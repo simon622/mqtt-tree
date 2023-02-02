@@ -189,6 +189,49 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     }
 
     @Test
+    public void testMultiSep() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("/////", "foo");
+        Assert.assertEquals("first level is a token", 1, tree.search("/////").size());
+    }
+
+//    @Test
+    public void testMultiPathSepUC1() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("+/+/+/+/+/+", "Client1");
+        Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
+    }
+
+//    @Test
+    public void testMultiPathSepUC2() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("+/+/+/+/+/", "Client1");
+        Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
+    }
+
+//    @Test
+    public void testMultiPathSepUC3() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("/+/+/+/+/", "Client1");
+System.err.println(tree.getDistinctPaths(true));
+        Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
+    }
+
+    @Test
+    public void testTopLevelTokenMatchPath() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("+", "foo");
+        System.err.println(tree.toTree(System.lineSeparator()));
+        Assert.assertEquals("first level is a token", 1, tree.search("anything").size());
+        Assert.assertEquals("no match expected", 0, tree.search("anything/else").size());
+    }
+
+    @Test
     public void testTopLevelPrefixTokenMatchDistinct() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
@@ -260,6 +303,19 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
 
         Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
         Assert.assertEquals("wildcard should match", 3, tree.search("foo/bar/zoo").size());
+    }
+
+    @Test
+    public void testMutliplePathLevel() throws MqttTreeException, MqttTreeLimitExceededException {
+
+        MqttTree<String> tree = createTreeDefaultConfig();
+        tree.addSubscription("foo/+/bar/+/+/is/ok", "foo");
+        Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
+        Assert.assertEquals("wildcard should match", 1,
+                tree.search("foo/1/bar/2/3/is/ok").size());
+
+        Assert.assertEquals("wildcard should NOT match", 0,
+                tree.search("foo/1/bar/2/3/4/is/ok").size());
     }
 
     @Test

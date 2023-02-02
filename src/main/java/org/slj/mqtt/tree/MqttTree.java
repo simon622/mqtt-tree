@@ -34,6 +34,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * TriesTree implementation designed to add members at each level of the tree and normalise the storage
  * retaining the separators as tree nodes per the specification.
+ *
+ * The tree should operate per the normative and non-normative specification statements. The one exception
+ * to this is the behaviour of $SYS topics which I considered to be a function of the implementation as to
+ * whether these are supported.
  */
 public class MqttTree<T> {
 
@@ -174,6 +178,7 @@ public class MqttTree<T> {
         }
 
         String[] segments = split(path);
+System.err.println(Arrays.toString(segments));
         return searchTreeForMembers(root, segments);
     }
 
@@ -248,6 +253,20 @@ public class MqttTree<T> {
         Set<T> wildSegmentMembers = null;
         Set<T> fullMembers = null;
 
+        //wildpath root
+        if(node.isRoot()){
+            if(node.hasChild(wildPath)){
+                TrieNode<T> wildpath = node.getChild(wildPath);
+
+                //recurse point
+                Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildpath, segments);
+                if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
+                    if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
+                    wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
+                }
+            }
+        }
+
         for (int i=0; i < segments.length; i++){
 
             //wildcard
@@ -263,6 +282,7 @@ public class MqttTree<T> {
                     }
                 }
             }
+
 
             //wildpath
             TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
@@ -289,6 +309,21 @@ public class MqttTree<T> {
                         if(wildCardNodeNextLevel != null && wildCardNodeNextLevel.hasMembers()){
                             if (wildcardMembers == null) wildcardMembers = new HashSet<>();
                             wildcardMembers.addAll(wildCardNodeNextLevel.getMembers());
+                        }
+                    }
+                }
+            } else {
+                if(node.hasChild(wildPath)){
+                    TrieNode<T> peekAheadWildPathChild = node.getChild(wildPath);
+                    if(peekAheadWildPathChild.isLeaf() && i == segments.length - 1){
+                        //this is added where "/+" is equal to "/"
+                        if(peekAheadWildPathChild.hasMembers()){
+                            Set<T> wildpathTerminatorMembers = peekAheadWildPathChild.getMembers();
+                            if(wildpathTerminatorMembers != null &&
+                                    !wildpathTerminatorMembers.isEmpty()){
+                                if (wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
+                                wildSegmentMembers.addAll(wildpathTerminatorMembers);
+                            }
                         }
                     }
                 }
