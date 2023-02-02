@@ -7,6 +7,9 @@ public interface IMqttTree<T> {
     void addSubscription(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException;
 
+    boolean removeSubscriptionFromPath(final String path, T member)
+            throws MqttTreeException;
+
     Set<T> search(final String path);
 
     boolean hasMembers(final String path);
