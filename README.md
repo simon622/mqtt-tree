@@ -8,8 +8,9 @@ in a highly concurrent environment.
 ## Table of Contents
 1. [About](#about)
 2. [Memory & Time Performance](#memory--time-performance)
-3. [Benchmarking](#benchmarking)
-4. [Example Usage](#example-usage)
+3. [Prefix (TypeAhead) Search](#prefix--typeahead--search)
+4. [Benchmarking](#benchmarking)
+5. [Example Usage](#example-usage)
    
 ## About
 Broker and gateway implementations of MQTT will all need the ability to quickly and efficiently look up subscriptions. Subscriptions
@@ -21,8 +22,6 @@ available for others who may need to same thing.
 
 Typical use would be to index your client session subscriptions using this tree for exceptionally fast lookup of subscriptions
 in high load environments. Modifications and Reads are entirely synchronized and can be performed without external synchronization.
-
-![Screenshot](/ext/mqtt-tree.png)
 
 ## Memory & Time Performance
 The tree uses a Tries algorithm internally (prefix tree), where each level of the tree is a normalized path segment. Thus a million subscriptions to the
