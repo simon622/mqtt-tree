@@ -37,21 +37,36 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MqttTree<T> {
 
+    static MqttTreeLimitExceededException TREE_MEMBER_LIMIT_EXCEEDED
+            = new MqttTreeLimitExceededException("mqtt tree member limit exceeded");
+
+    static MqttTreeLimitExceededException TREE_PATH_LIMIT_EXCEEDED
+            = new MqttTreeLimitExceededException("mqtt tree path limit exceeded");
+
+    static MqttTreeLimitExceededException TREE_PATH_LENGTH_EXCEEDED
+            = new MqttTreeLimitExceededException("mqtt tree path length exceeded");
+
+    static MqttTreeException TREE_STATE_ERROR
+            = new MqttTreeException("mqtt tree state");
+
+    static MqttTreeInputException TREE_INPUT_ERROR
+            = new MqttTreeInputException("mqtt tree exception, error in input");
     protected final Logger logger = LoggerFactory.getLogger(getClass());
-    public static final char DEFAULT_SPLIT = '/';
-    public static final String DEFAULT_WILDCARD = "#";
-    public static final String DEFAULT_WILDPATH = "+";
-    private static final int DEFAULT_MAX_PATH_SIZE = 1024;
+    public static final char DEFAULT_SPLIT = MqttTreeConstants.PATH_SEP;
+    public static final String DEFAULT_WILDCARD = MqttTreeConstants.MULTI_LEVEL_WILDCARD;
+    public static final String DEFAULT_WILDPATH = MqttTreeConstants.SINGLE_LEVEL_WILDCARD;
+    private static final int DEFAULT_MAX_PATH_SIZE = MqttTreeConstants.MAX_TOPIC_LENGTH;
     private static final int DEFAULT_MAX_PATH_SEGMENTS = 1024;
     private static final int DEFAULT_MAX_MEMBERS_AT_LEVEL = 1024 * 10;
-    private final Set<String> wildcards = new HashSet<>(4);
-    private final Set<String> wildpaths = new HashSet<>(4);
     private final boolean selfPruningTree;
     private final char split;
+    private final String splitStr;
     private final TrieNode<T> root;
-    private long maxPathSize = DEFAULT_MAX_PATH_SIZE;
-    private long maxPathSegments = DEFAULT_MAX_PATH_SEGMENTS;
-    private long maxMembersAtLevel = DEFAULT_MAX_MEMBERS_AT_LEVEL;
+    private int maxPathSize = DEFAULT_MAX_PATH_SIZE;
+    private int maxPathSegments = DEFAULT_MAX_PATH_SEGMENTS;
+    private int maxMembersAtLevel = DEFAULT_MAX_MEMBERS_AT_LEVEL;
+    private String wildCard = DEFAULT_WILDCARD;
+    private String wildPath = DEFAULT_WILDPATH;
 
     /**
      * An MQTT subscription tree is a tries based thread-safe tree, designed for storage of arbitrary membership data at any given level
@@ -65,6 +80,7 @@ public class MqttTree<T> {
      */
     public MqttTree(final char splitChar, final boolean selfPruningTree){
         this.split = splitChar;
+        this.splitStr = split + "";
         this.selfPruningTree = selfPruningTree;
         this.root = new TrieNode<T>( null, null);
     }
@@ -73,61 +89,59 @@ public class MqttTree<T> {
         return maxPathSize;
     }
 
-    public MqttTree withMaxPathSize(long maxPathSize) {
+    /**
+     * Configure the max allowed path size
+     * @param maxPathSize - The max. allowed path size (including separator characters) in the tree.
+     * @return this
+     */
+    public MqttTree withMaxPathSize(int maxPathSize) {
         this.maxPathSize = maxPathSize;
         return this;
     }
 
-    public long getMaxPathSegments() {
-        return maxPathSegments;
-    }
-
-    public MqttTree withMaxPathSegments(long maxPathSegments) {
+    /**
+     * Configure the max allowed path segments
+     * @param maxPathSegments - The max. allowed path segment count in tree. This represents how deep the tree is allowed to get. Setting a limit and then brreaching that limit will result in an exception
+     *                        during use.
+     * @return this
+     */
+    public MqttTree withMaxPathSegments(int maxPathSegments) {
         this.maxPathSegments = maxPathSegments;
         return this;
+    }
+
+    public int getMaxPathSegments() {
+        return maxPathSegments;
     }
 
     public long getMaxMembersAtLevel() {
         return maxMembersAtLevel;
     }
 
-    public MqttTree withMaxMembersAtLevel(long maxMembersAtLevel) {
+    public MqttTree withMaxMembersAtLevel(int maxMembersAtLevel) {
         this.maxMembersAtLevel = maxMembersAtLevel;
-        return this;
-    }
-
-    public MqttTree withWildcard(String wildcard){
-        if(wildcard == null) throw new NullPointerException("wild card cannot be <null>");
-        wildcards.add(wildcard);
-        return this;
-    }
-
-    public MqttTree withWildpath(String wildpath){
-        if(wildpaths == null) throw new NullPointerException("wild path cannot be <null>");
-        wildpaths.add(wildpath);
         return this;
     }
 
     public void addSubscription(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException {
 
-        if(path == null || path.length() == 0) throw new MqttTreeException("invalid subscription path");
-
-        if(path.length() > maxPathSize)
-            throw new MqttTreeLimitExceededException("cannot add paths lengths exceeding the configured max '"+maxPathSize+"' - ("+path.length()+")");
+        if(!MqttTreeUtils.isValidSubscriptionTopic(path, maxPathSize)){
+            throw TREE_INPUT_ERROR;
+        }
 
         String[] segments = split(path);
 
         if(segments.length > maxPathSegments)
-            throw new MqttTreeLimitExceededException("cannot add paths exceeding the configured max segments '"+maxPathSegments+"' - ("+segments.length+")");
+            throw TREE_PATH_LIMIT_EXCEEDED;
 
         if(members != null && members.length > maxMembersAtLevel)
-            throw new MqttTreeLimitExceededException("cannot add paths with the number of members exceeding max '"+maxMembersAtLevel+"'");
+            throw TREE_MEMBER_LIMIT_EXCEEDED;
 
         TrieNode<T> node = root;
         for (int i=0; i<segments.length; i++){
             if(node == null){
-                throw new MqttTreeException("invalid tree state, node didnt exist");
+                throw TREE_STATE_ERROR;
             }
             if(i == segments.length - 1){
                 node = node.addChild(segments[i], members);
@@ -155,13 +169,8 @@ public class MqttTree<T> {
     public Set<T> search(final String path)
             throws MqttTreeException {
 
-        if(path == null || path.length() == 0) throw new MqttTreeException("cannot search <null> or empty path");
-        for (String wildcard: wildcards) {
-            if(path.contains(wildcard)) throw new MqttTreeException("search path cannot contain wildcard, please refer to MQTT specification");
-        }
-
-        for (String wildpath: wildpaths) {
-            if(path.contains(wildpath)) throw new MqttTreeException("search path cannot contain wildpath, please refer to MQTT specification");
+        if(!MqttTreeUtils.isValidPublishTopic(path, maxPathSize)){
+            throw TREE_INPUT_ERROR;
         }
 
         String[] segments = split(path);
@@ -170,7 +179,7 @@ public class MqttTree<T> {
 
     public boolean hasMembers(final String path){
         TrieNode<T> node = getNodeIfExists(path);
-        return node == null ? false: node.hasMembers();
+        return node != null && node.hasMembers();
     }
 
     public boolean hasPath(String path){
@@ -190,10 +199,6 @@ public class MqttTree<T> {
         return node;
     }
 
-    public void visitChildren(MqttTreeNodeVisitor visitor) {
-        visitChildren(root, visitor);
-    }
-
     private static void visitChildren(MqttTreeNode node, MqttTreeNodeVisitor visitor) {
         if (node != null) {
             Set<String> children = node.getChildPaths();
@@ -202,7 +207,7 @@ public class MqttTree<T> {
                 String path = itr.next();
                 MqttTreeNode child = node.getChild(path);
                 if (child == null) {
-                    throw new RuntimeException("encountered invalid tree state");
+                    throw TREE_STATE_ERROR;
                 } else {
                     visitChildren(child, visitor);
                     visitor.visit(child);
@@ -227,7 +232,7 @@ public class MqttTree<T> {
                 String path = itr.next();
                 MqttTreeNode child = node.getChild(path);
                 if (child == null) {
-                    throw new RuntimeException("encountered invalid tree state");
+                    throw TREE_STATE_ERROR;
                 } else {
                     visit(child, visitor);
                 }
@@ -237,43 +242,57 @@ public class MqttTree<T> {
 
     private Set<T> searchTreeForMembers(TrieNode<T> node, String[] segments){
 
-        if(node == null) throw new NullPointerException("cannot search a null node");
+        if(node == null) throw TREE_STATE_ERROR;
 
         Set<T> wildcardMembers = null;
         Set<T> wildSegmentMembers = null;
         Set<T> fullMembers = null;
 
         for (int i=0; i < segments.length; i++){
-            if(!wildcards.isEmpty()){
-                for (String wildcard: wildcards) {
-                    TrieNode<T> wild = node.getChild(wildcard);
-                    if(wild != null){
-                        Set<T> wildcardMembersAtLevel = wild.getMembers();
-                        if(wildcardMembersAtLevel != null && !wildcardMembersAtLevel.isEmpty()){
-                            if(wildcardMembers == null) wildcardMembers = new HashSet<>();
+
+            //wildcard
+            TrieNode<T> wildCardNodeAtLevel = node.getChild(wildCard);
+            if(wildCardNodeAtLevel != null){
+                if(wildCardNodeAtLevel.hasMembers()){
+                    Set<T> wildcardMembersAtLevel = wildCardNodeAtLevel.getMembers();
+                    if(wildcardMembersAtLevel != null){
+                        if(!wildcardMembersAtLevel.isEmpty()){
+                            if (wildcardMembers == null) wildcardMembers = new HashSet<>();
                             wildcardMembers.addAll(wildcardMembersAtLevel);
                         }
                     }
                 }
             }
 
-            if(!wildpaths.isEmpty()){
-                for (String wildpath: wildpaths) {
-                    TrieNode<T> wild = node.getChild(wildpath);
-                    if(wild != null){
-                        String[] remainingSegments =
-                                Arrays.copyOfRange(segments, i + 1, segments.length);
-                        //recurse point
-                        Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wild, remainingSegments);
-                        if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
-                            if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
-                            wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
+            //wildpath
+            TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
+            if(wildPathNodeAtLevel != null){
+                String[] remainingSegments =
+                        Arrays.copyOfRange(segments, i + 1, segments.length);
+                //recurse point
+                Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
+                if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
+                    if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
+                    wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
+                }
+            }
+
+            node = node.getChild(segments[i]);
+            if(node == null) break;
+
+            //wildcard under sep
+            if(!node.isSeparator()){
+                if(node.hasChild(splitStr)){
+                    TrieNode<T> peekAhead = node.getChild(splitStr);
+                    if(peekAhead.hasChild(wildCard)){
+                        TrieNode<T> wildCardNodeNextLevel = peekAhead.getChild(wildCard);
+                        if(wildCardNodeNextLevel != null && wildCardNodeNextLevel.hasMembers()){
+                            if (wildcardMembers == null) wildcardMembers = new HashSet<>();
+                            wildcardMembers.addAll(wildCardNodeNextLevel.getMembers());
                         }
                     }
                 }
             }
-            node = node.getChild(segments[i]);
-            if(node == null) break;
         }
 
         if(node != null){
@@ -368,27 +387,32 @@ public class MqttTree<T> {
     public class TrieNode<T> implements MqttTreeNode{
         private volatile Map<String, TrieNode<T>> children;
         private volatile Set<T> members;
-        private String pathSegment;
+        private final String pathSegment;
         private TrieNode parent;
         private final boolean isRoot;
+        private final boolean isSeparator;
         private final Object memberMutex = new Object();
         private final Object childrenMutex = new Object();
-        private AtomicInteger memberCount = new AtomicInteger(0);
+        private final AtomicInteger memberCount = new AtomicInteger(0);
 
         protected TrieNode(final TrieNode parent, final String pathSegment){
             this.parent = parent;
             this.pathSegment = pathSegment;
             this.isRoot = parent == null;
+            this.isSeparator = splitStr.equals(pathSegment);
             if(!isRoot){
-                if(pathSegment == null)
-                    throw new IllegalArgumentException("unable to add null element child to " + parent.pathSegment);
+                if(pathSegment == null){
+                    throw TREE_INPUT_ERROR;
+                }
             }
         }
 
         public TrieNode addChild(final String pathSegment, final T... membersIn)
                 throws MqttTreeLimitExceededException {
-            if(pathSegment == null) throw new IllegalArgumentException("unable to mount <null> leaf to tree");
-            TrieNode child;
+            if(pathSegment == null) {
+                throw TREE_STATE_ERROR;
+            }
+            TrieNode<T> child;
             if(children == null) {
                 synchronized (childrenMutex) {
                     if (children == null) {
@@ -406,6 +430,10 @@ public class MqttTree<T> {
             }
             if(membersIn.length > 0) child.addMembers(membersIn);
             return child;
+        }
+
+        public boolean isSeparator(){
+            return isSeparator;
         }
 
         public TrieNode getChild(final String path){
@@ -456,7 +484,7 @@ public class MqttTree<T> {
             }
         }
 
-        public  void  addMembers(T... membersIn) throws MqttTreeLimitExceededException {
+        public void addMembers(T... membersIn) throws MqttTreeLimitExceededException {
 
             if(members == null && membersIn != null && membersIn.length > 0) {
                 synchronized (memberMutex) {
@@ -468,11 +496,13 @@ public class MqttTree<T> {
 
             if(membersIn != null && membersIn.length > 0){
                 if(members.size() + membersIn.length > MqttTree.this.getMaxMembersAtLevel()){
-                    throw new MqttTreeLimitExceededException("member limit exceeded at level");
+                    throw TREE_MEMBER_LIMIT_EXCEEDED;
                 }
                 for(T m : membersIn){
-                    if(members.add(m)){
-                        memberCount.incrementAndGet();
+                    if(m != null){
+                        if(members.add(m)){
+                            memberCount.incrementAndGet();
+                        }
                     }
                 }
             }
@@ -512,6 +542,7 @@ public class MqttTree<T> {
             if(children == null){
                 return Collections.emptySet();
             } else {
+                //TODO fix me
                 synchronized (childrenMutex){
                     return Collections.unmodifiableSet(children.keySet());
                 }
@@ -526,11 +557,11 @@ public class MqttTree<T> {
         public String toString() {
             return "TrieNode{" +
                     "pathSegment='" + pathSegment + '\'' +
-                    ", parent=" + parent +
                     ", isRoot=" + isRoot +
+                    ", isSeparator=" + isSeparator +
+                    ", memberCount=" + memberCount +
                     '}';
         }
-
 
         public String toPath(boolean climb){
             if(climb){
@@ -557,7 +588,7 @@ public class MqttTree<T> {
             if (o == null || getClass() != o.getClass()) return false;
             TrieNode<?> trieNode = (TrieNode<?>) o;
             if (!pathSegment.equals(trieNode.pathSegment)) return false;
-            return parent != null ? parent.equals(trieNode.parent) : trieNode.parent == null;
+            return Objects.equals(parent, trieNode.parent);
         }
 
         @Override
@@ -568,4 +599,3 @@ public class MqttTree<T> {
         }
     }
 }
-

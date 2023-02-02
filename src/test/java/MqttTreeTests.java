@@ -27,17 +27,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.slj.mqtt.tree.MqttTree;
 import org.slj.mqtt.tree.MqttTreeException;
+import org.slj.mqtt.tree.MqttTreeInputException;
 import org.slj.mqtt.tree.MqttTreeLimitExceededException;
-import org.slj.mqtt.tree.ui.MqttTreeViewer;
 
-import javax.swing.*;
-import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MqttTreeTests {
+public class MqttTreeTests extends AbstractMqttTreeTests{
 
     @Before
     public void setup(){
@@ -67,7 +67,7 @@ public class MqttTreeTests {
         tree.addSubscription(topic, "foo");
     }
 
-    @Test(expected = MqttTreeLimitExceededException.class)
+    @Test(expected = MqttTreeInputException.class)
     public void testLargeTopicExceedsMaxLength() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
         String topic = generateTopicMaxLength((int) tree.getMaxPathSize() + 1);
@@ -86,9 +86,7 @@ public class MqttTreeTests {
 //    @Test
     public void testConcurrency() throws Exception {
 
-        MqttTree<String> tree = new MqttTree<>(MqttTree.DEFAULT_SPLIT, true);
-        tree.withWildcard("#");
-        tree.withWildpath("+");
+        MqttTree<String> tree = createTreeDefaultConfig();
         tree.withMaxMembersAtLevel(1000000);
 
         int loops = 100;
@@ -96,6 +94,9 @@ public class MqttTreeTests {
         CountDownLatch latch = new CountDownLatch(loops * threads);
         final long start = System.currentTimeMillis();
         AtomicInteger c = new AtomicInteger();
+        AtomicInteger totalReads = new AtomicInteger();
+
+        final List<String> allAddedPaths = Collections.synchronizedList(new ArrayList<>());
 
         //read thread
         Thread readThread = new Thread(new Runnable() {
@@ -103,18 +104,15 @@ public class MqttTreeTests {
             public void run() {
                while(true){
                    try {
-                       long start1 = System.currentTimeMillis();
-                       Set<String> s = tree.search("some/topic/1");
+                       int size = allAddedPaths.size();
+                       if(size == 0) continue;
+                       String path = allAddedPaths.get(ThreadLocalRandom.current().nextInt(0, allAddedPaths.size()));
+                       Set<String> s = tree.search(path);
+
+                       totalReads.incrementAndGet();
                        Iterator<String> itr = s.iterator();
-                       int i = 0;
                        while(itr.hasNext()){
                            itr.next();
-                           i++;
-                       }
-                       long t = System.currentTimeMillis() - start;
-                       if(t > 250){
-//                           Thread.sleep(1000);
-//                            System.err.println("read ["+i+"] took " + t + "ms for " + s.size());
                        }
 
                    } catch(Exception e){
@@ -130,7 +128,6 @@ public class MqttTreeTests {
         AtomicInteger removed = new AtomicInteger();
         AtomicInteger total = new AtomicInteger();
 
-        final Set<String> allAdded = Collections.synchronizedSet(new HashSet());
         final Set<String> allRemoved = Collections.synchronizedSet(new HashSet());
 
         for(int t = 0;  t < threads; t++){
@@ -141,10 +138,11 @@ public class MqttTreeTests {
                             String subscriberId = ""+c.incrementAndGet();
                             tree.addSubscription("some/topic/1",subscriberId);
                             for (int j = 0; j < 100; j++){
-                                tree.addSubscription(generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40)),subscriberId);
+                                String sub = generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40));
+                                tree.addSubscription(sub,subscriberId);
+                                allAddedPaths.add(sub);
                             }
                             added.incrementAndGet();
-                            allAdded.add(subscriberId);
 //                            tree.addSubscription("#",""+ThreadLocalRandom.current().nextInt(10, 100000));
                         } else {
 
@@ -179,6 +177,7 @@ public class MqttTreeTests {
         System.out.println("Root Branches: "+ tree.getBranchCount());
         System.out.println("Total Branches: "+ tree.countDistinctPaths(false));
         System.out.println("Read Took: "+ (done - quickstart));
+        System.out.println("Total Reads: "+ (totalReads));
     }
 
     @Test
@@ -226,7 +225,7 @@ public class MqttTreeTests {
         Assert.assertEquals("should be 1 distinct branches", 3, tree.getBranchCount());
         Assert.assertEquals("wildcard should match", 3, tree.search("foo/bar/is/me").size());
         Assert.assertEquals("wildcard should match", 2, tree.search("/foo/bar/is/you").size());
-        Assert.assertEquals("wildcard should match", 2, tree.search("foo/bar").size());
+        Assert.assertEquals("wildcard should match", 3, tree.search("foo/bar").size());
         Assert.assertEquals("wildcard should match", 1, tree.search("moo/bar").size());
     }
 
@@ -302,30 +301,4 @@ public class MqttTreeTests {
         Assert.assertEquals("path count should match", 200_000_2, tree.countDistinctPaths(false));
     }
 
-    public static String generateRandomTopic(int segments){
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < segments; i++){
-            if(i == 0) sb.append("/");
-            int r = ThreadLocalRandom.current().nextInt(0, 1000);
-            sb.append(r);
-            sb.append("/");
-        }
-        return sb.toString();
-    }
-
-    public static String generateTopicMaxLength(int length){
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < length; i++){
-            sb.append("a");
-        }
-        return sb.toString();
-    }
-
-    protected static MqttTree<String> createTreeDefaultConfig(){
-        MqttTree<String> tree = new MqttTree<>(MqttTree.DEFAULT_SPLIT, true);
-        tree.withWildcard("#");
-        tree.withWildpath("+");
-        tree.withMaxMembersAtLevel(1000000);
-        return tree;
-    }
 }

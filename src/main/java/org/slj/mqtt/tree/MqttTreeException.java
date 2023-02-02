@@ -1,6 +1,6 @@
 package org.slj.mqtt.tree;
 
-public class MqttTreeException extends Exception{
+public class MqttTreeException extends RuntimeException{
 
     public MqttTreeException() {
     }
