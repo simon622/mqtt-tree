@@ -39,7 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * to this is the behaviour of $SYS topics which I considered to be a function of the implementation as to
  * whether these are supported.
  */
-public class MqttTree<T> {
+public class MqttTree<T> implements IMqttTree<T> {
 
     static MqttTreeLimitExceededException TREE_MEMBER_LIMIT_EXCEEDED
             = new MqttTreeLimitExceededException("mqtt tree member limit exceeded");
