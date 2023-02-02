@@ -282,32 +282,34 @@ public class MqttTree<T> implements IMqttTree<T> {
                 }
             }
 
-
             //wildpath
-            TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
-            if(wildPathNodeAtLevel != null){
-                String[] remainingSegments =
-                        Arrays.copyOfRange(segments, i+1, segments.length);
-                //recurse point
-                Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
-                if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
-                    if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
-                    wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
-                }
-
-                //read a node forward
-                if(wildPathNodeAtLevel.hasChild(splitStr)){
-                    remainingSegments =
-                            Arrays.copyOfRange(segments, i, segments.length);
-
-                    wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
+            if(node.hasChild(wildPath)){
+                TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
+                if(wildPathNodeAtLevel != null){
+                    String[] remainingSegments =
+                            Arrays.copyOfRange(segments, i+1, segments.length);
+                    //recurse point
+                    Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
                     if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
                         if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
                         wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
                     }
-                }
 
+                    //read a node forward
+                    if(wildPathNodeAtLevel.hasChild(splitStr)){
+                        remainingSegments =
+                                Arrays.copyOfRange(segments, i, segments.length);
+
+                        wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
+                        if(wildSegmentMembersAtLevel != null && !wildSegmentMembersAtLevel.isEmpty()){
+                            if(wildSegmentMembers == null) wildSegmentMembers = new HashSet<>();
+                            System.err.println("no, i have a member");
+                            wildSegmentMembers.addAll(wildSegmentMembersAtLevel);
+                        }
+                    }
+                }
             }
+
 
             node = node.getChild(segments[i]);
             if(node == null) break;
