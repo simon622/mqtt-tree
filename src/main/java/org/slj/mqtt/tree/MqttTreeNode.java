@@ -8,6 +8,10 @@ public interface MqttTreeNode<T> {
 
     boolean isLeaf();
 
+    boolean isWildcard();
+
+    boolean isWildpath();
+
     boolean hasChildren();
 
     boolean hasMembers();
