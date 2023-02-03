@@ -64,6 +64,7 @@ public class MqttTree<T> implements IMqttTree<T> {
     private static final int DEFAULT_MAX_PATH_SIZE = MqttTreeConstants.MAX_TOPIC_LENGTH;
     private static final int DEFAULT_MAX_PATH_SEGMENTS = 1024;
     private static final int DEFAULT_MAX_MEMBERS_AT_LEVEL = 1024 * 10;
+    private static final int DEFAULT_SLASH_INITIALIZATION_SIZE = 256;
     private final boolean selfPruningTree;
     private final char split;
     private final String splitStr;
@@ -451,7 +452,8 @@ public class MqttTree<T> implements IMqttTree<T> {
                     if (children == null) {
                         //size the child map according to being '/'
                         //root has invariable 1 child '/' and '/' has many children
-                        children = new ConcurrentHashMap<>(parent != null && parent.isRoot() ? 1024 : 4);
+                        children = new ConcurrentHashMap<>((parent != null && parent.isRoot() && isSeparator())
+                                ? DEFAULT_SLASH_INITIALIZATION_SIZE : 1);
                     }
                 }
             }
