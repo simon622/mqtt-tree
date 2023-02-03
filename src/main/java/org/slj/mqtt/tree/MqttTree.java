@@ -64,7 +64,8 @@ public class MqttTree<T> implements IMqttTree<T> {
     private static final int DEFAULT_MAX_PATH_SIZE = MqttTreeConstants.MAX_TOPIC_LENGTH;
     private static final int DEFAULT_MAX_PATH_SEGMENTS = 1024;
     private static final int DEFAULT_MAX_MEMBERS_AT_LEVEL = 1024 * 10;
-    private static final int DEFAULT_SLASH_INITIALIZATION_SIZE = 256;
+    private static final int DEFAULT_ROOT_INITIALIZATION_SIZE = 256;
+    private static final int DEFAULT_INITIALIZATION_SIZE = 4;
     private final boolean selfPruningTree;
     private final char split;
     private final String splitStr;
@@ -72,6 +73,8 @@ public class MqttTree<T> implements IMqttTree<T> {
     private int maxPathSize = DEFAULT_MAX_PATH_SIZE;
     private int maxPathSegments = DEFAULT_MAX_PATH_SEGMENTS;
     private int maxMembersAtLevel = DEFAULT_MAX_MEMBERS_AT_LEVEL;
+    private int defaultChildCountInitializationSize = DEFAULT_INITIALIZATION_SIZE;
+    private int defaultRootChildCountInitializationSize = DEFAULT_ROOT_INITIALIZATION_SIZE;
     private String wildCard = DEFAULT_WILDCARD;
     private String wildPath = DEFAULT_WILDPATH;
 
@@ -103,6 +106,26 @@ public class MqttTree<T> implements IMqttTree<T> {
      */
     public MqttTree withMaxPathSize(int maxPathSize) {
         this.maxPathSize = maxPathSize;
+        return this;
+    }
+
+    /**
+     * Configure the size to initialize child map with for the '/' node
+     * @param defaultRootChildCountInitializationSize
+     * @return this
+     */
+    public MqttTree withDefaultRootInitializationSize(int defaultRootChildCountInitializationSize) {
+        this.defaultRootChildCountInitializationSize = defaultRootChildCountInitializationSize;
+        return this;
+    }
+
+    /**
+     * Configure the size to initialize child map with all nodes bar '/'
+     * @param defaultChildCountInitializationSize
+     * @return this
+     */
+    public MqttTree withDefaultInitializationSize(int defaultChildCountInitializationSize) {
+        this.defaultChildCountInitializationSize = defaultChildCountInitializationSize;
         return this;
     }
 
@@ -453,7 +476,7 @@ public class MqttTree<T> implements IMqttTree<T> {
                         //size the child map according to being '/'
                         //root has invariable 1 child '/' and '/' has many children
                         children = new ConcurrentHashMap<>((parent != null && parent.isRoot() && isSeparator())
-                                ? DEFAULT_SLASH_INITIALIZATION_SIZE : 1);
+                                ? defaultRootChildCountInitializationSize : defaultChildCountInitializationSize);
                     }
                 }
             }
