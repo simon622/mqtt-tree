@@ -7,7 +7,7 @@ import org.slj.mqtt.tree.MqttTreeLimitExceededException;
 
 import java.util.Set;
 
-public class MqttSpecificationTests extends AbstractMqttTreeTests {
+public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
 
     @Test
     public void testMultiLevelSpecificationExamplesNormative() throws MqttTreeException, MqttTreeLimitExceededException {
