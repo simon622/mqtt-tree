@@ -4,10 +4,10 @@ import java.util.Set;
 
 public interface IMqttTree<T> {
 
-    MqttTreeNode<T> addSubscription(final String path, final T... members)
+    MqttTreeNode<T> subscribe(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException;
 
-    boolean removeSubscriptionFromPath(final String path, T member)
+    boolean unsubscribe(final String path, T member)
             throws MqttTreeException;
 
     Set<T> search(final String path);

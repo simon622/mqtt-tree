@@ -41,6 +41,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class MqttTree<T> implements IMqttTree<T> {
 
+    //define static exceptions for use in high traffic
     static MqttTreeLimitExceededException TREE_MEMBER_LIMIT_EXCEEDED
             = new MqttTreeLimitExceededException("mqtt tree member limit exceeded");
 
@@ -55,6 +56,7 @@ public class MqttTree<T> implements IMqttTree<T> {
 
     static MqttTreeInputException TREE_INPUT_ERROR
             = new MqttTreeInputException("mqtt tree exception, error in input");
+
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     public static final char DEFAULT_SPLIT = MqttTreeConstants.PATH_SEP;
     public static final String DEFAULT_WILDCARD = MqttTreeConstants.MULTI_LEVEL_WILDCARD;
@@ -127,7 +129,7 @@ public class MqttTree<T> implements IMqttTree<T> {
         return this;
     }
 
-    public MqttTreeNode<T>  addSubscription(final String path, final T... members)
+    public MqttTreeNode<T> subscribe(final String path, final T... members)
             throws MqttTreeException, MqttTreeLimitExceededException {
 
         if(!MqttTreeUtils.isValidSubscriptionTopic(path, maxPathSize)){
@@ -156,7 +158,7 @@ public class MqttTree<T> implements IMqttTree<T> {
         return node;
     }
 
-    public boolean removeSubscriptionFromPath(final String path, T member) throws MqttTreeException {
+    public boolean unsubscribe(final String path, T member) throws MqttTreeException {
         if(path == null || path.length() == 0) throw new MqttTreeException("invalid subscription path");
         TrieNode<T> node = getNodeIfExists(path);
         if(node != null){

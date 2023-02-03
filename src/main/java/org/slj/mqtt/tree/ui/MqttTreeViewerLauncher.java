@@ -14,7 +14,7 @@ public class MqttTreeViewerLauncher {
                 new MqttTree<String>(MqttTree.DEFAULT_SPLIT, true));
 
         for (int i=0; i<1000; i++){
-            tree.addSubscription(MqttTreeUtils.generateRandomTopic(20), "SomeClientId");
+            tree.subscribe(MqttTreeUtils.generateRandomTopic(20), "SomeClientId");
         }
 
         SwingUtilities.invokeLater(new Runnable() {

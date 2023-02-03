@@ -52,11 +52,11 @@ public class SearchableMqttTree<T>
     }
 
     @Override
-    public MqttTreeNode<T> addSubscription(String path, T[] members)
+    public MqttTreeNode<T> subscribe(String path, T[] members)
             throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTreeNode<T> node = null;
         try {
-             node = mqttTree.addSubscription(path, members);
+             node = mqttTree.subscribe(path, members);
              return node;
         } finally {
             synchronized (radix){
@@ -69,9 +69,9 @@ public class SearchableMqttTree<T>
     }
 
     @Override
-    public boolean removeSubscriptionFromPath(String path, T member) throws MqttTreeException {
+    public boolean unsubscribe(String path, T member) throws MqttTreeException {
 
-        boolean removed = mqttTree.removeSubscriptionFromPath(path, member);
+        boolean removed = mqttTree.unsubscribe(path, member);
         if(removed){
             if(!hasMembers(path)){
                 synchronized (radix){

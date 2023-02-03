@@ -12,7 +12,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testMultiLevelSpecificationExamplesNormative() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/tennis/player1/#", "Client");
+        tree.subscribe("sport/tennis/player1/#", "Client");
         Assert.assertTrue("subscription should exist",
                 tree.search("sport/tennis/player1").size() == 1);
 
@@ -26,25 +26,25 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testMultiLevelSpecificationExamplesNonNormativeExample2() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/tennis/#", "Client");
+        tree.subscribe("sport/tennis/#", "Client");
     }
 
     @Test(expected = MqttTreeInputException.class)
     public void testMultiLevelSpecificationExamplesNonNormativeExample3() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/tennis#", "Client");
+        tree.subscribe("sport/tennis#", "Client");
     }
 
     @Test(expected = MqttTreeInputException.class)
     public void testMultiLevelSpecificationExamplesNonNormativeExample4() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/tennis/#/ranking", "Client");
+        tree.subscribe("sport/tennis/#/ranking", "Client");
     }
 
     @Test
     public void testMultiLevelSpecificationExamplesNonNormativeExample1() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/#", "Client");
+        tree.subscribe("sport/#", "Client");
         Assert.assertTrue("subscription should exist",
                 tree.search("sport").size() == 1);
     }
@@ -53,7 +53,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample1() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/tennis/+", "Client");
+        tree.subscribe("sport/tennis/+", "Client");
 
         System.err.println(tree.toTree(System.lineSeparator()));
 
@@ -72,7 +72,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
 
         //because the single-level wildcard matches only a single level, “sport/+” does not match “sport” but it does match “sport/”.
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/+", "Client1");
+        tree.subscribe("sport/+", "Client1");
 
         Assert.assertTrue("subscription should NOT exist",
                 tree.search("sport").size() == 0);
@@ -84,7 +84,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample2() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+", "Client");
+        tree.subscribe("+", "Client");
 
         Assert.assertTrue("subscription should exist",
                 tree.search("foo").size() == 1);
@@ -93,7 +93,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample3() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+/tennis/#", "Client");
+        tree.subscribe("+/tennis/#", "Client");
 
         Assert.assertTrue("subscription should exist",
                 tree.search("foo/tennis/player1").size() == 1);
@@ -105,14 +105,14 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test(expected = MqttTreeInputException.class)
     public void testSingleLevelSpecificationExamplesNonNormativeExample4() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport+", "Client");
+        tree.subscribe("sport+", "Client");
     }
 
     @Test
     public void testSingleLevelSpecificationExamplesNonNormativeExample5() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("sport/+/player1", "Client");
-        tree.addSubscription("sport/+/player2", "Client2");
+        tree.subscribe("sport/+/player1", "Client");
+        tree.subscribe("sport/+/player2", "Client2");
 
         Assert.assertTrue("subscription should exist",
                 tree.search("sport/any/player1").size() == 1);
@@ -123,9 +123,9 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
 
         //“/finance” matches “+/+” and “/+”, but not “+”
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+", "Client1");
-        tree.addSubscription("+/+", "Client2");
-        tree.addSubscription("/+", "Client3");
+        tree.subscribe("+", "Client1");
+        tree.subscribe("+/+", "Client2");
+        tree.subscribe("/+", "Client3");
 
         Set<String> s = tree.search("/finance");
 
@@ -137,7 +137,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     public void testSingleLevelSpecificationExamplesNonNormativeExample6Edge() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+/+", "Client");
+        tree.subscribe("+/+", "Client");
 
         System.err.println(tree.getDistinctPaths(true));
 
@@ -150,15 +150,15 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test(expected = MqttTreeInputException.class)
     public void testSemanticExample1() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("", "Client1");
+        tree.subscribe("", "Client1");
     }
 
     @Test
     public void testSemanticExample4() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/leading/", "Client1");
-        tree.addSubscription("leading/", "Not1");
-        tree.addSubscription("/leading", "Not2");
+        tree.subscribe("/leading/", "Client1");
+        tree.subscribe("leading/", "Not1");
+        tree.subscribe("/leading", "Not2");
 
         Set<String> m = tree.search("/leading/");
         Assert.assertEquals("subscription should exist", 1,
@@ -171,7 +171,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSemanticExample5() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/", "Client1");
+        tree.subscribe("/", "Client1");
 
         Set<String> m = tree.search("/");
         Assert.assertEquals("subscription should exist", 1,
@@ -184,8 +184,8 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSemanticExample8() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("ACCOUNTS", "Client1");
-        tree.addSubscription("accounts", "Client2");
+        tree.subscribe("ACCOUNTS", "Client1");
+        tree.subscribe("accounts", "Client2");
         Assert.assertEquals("should be 2 distinct branches", 2, tree.getBranchCount());
         Assert.assertTrue("subscription should exist",
                 tree.search("ACCOUNTS").size() == 1);
@@ -194,7 +194,7 @@ public class MqttSpecificationComplianceTests extends AbstractMqttTreeTests {
     @Test
     public void testSemanticExample9() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("Accounts payable", "Client1");
+        tree.subscribe("Accounts payable", "Client1");
         Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
         Assert.assertTrue("subscription should exist",
                 tree.search("Accounts payable").size() == 1);

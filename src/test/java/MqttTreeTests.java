@@ -47,7 +47,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         for (int i = 0; i < BRANCHES; i++){
             int depth = ThreadLocalRandom.current().nextInt(1, 10);
             String topic = generateRandomTopic(depth);
-            tree.addSubscription(topic, "foo");
+            tree.subscribe(topic, "foo");
             added.add(topic);
         }
         Set<String> all = tree.getDistinctPaths(true);
@@ -60,14 +60,14 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testLargeTopicExceedsMaxSegments() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
         String topic = generateRandomTopic((int) tree.getMaxPathSegments() + 1);
-        tree.addSubscription(topic, "foo");
+        tree.subscribe(topic, "foo");
     }
 
     @Test(expected = MqttTreeInputException.class)
     public void testLargeTopicExceedsMaxLength() throws MqttTreeException, MqttTreeLimitExceededException {
         MqttTree<String> tree = createTreeDefaultConfig();
         String topic = generateTopicMaxLength((int) tree.getMaxPathSize() + 1);
-        tree.addSubscription(topic, "foo");
+        tree.subscribe(topic, "foo");
     }
 
     @Test(expected = MqttTreeLimitExceededException.class)
@@ -76,14 +76,14 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         String topic = generateRandomTopic(10);
         String[] members = new String[(int) tree.getMaxMembersAtLevel() + 1];
         Arrays.fill(members, UUID.randomUUID().toString());
-        tree.addSubscription(topic, members);
+        tree.subscribe(topic, members);
     }
 
     @Test
     public void testTopLevelTokenMatch() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/", "foo");
+        tree.subscribe("/", "foo");
         searchExpecting(tree, "/", "foo", 1);
     }
 
@@ -91,12 +91,12 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testArbitraryMatch() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("foo/", "foo", "foo2");
-        tree.addSubscription("/", "bar");
-        tree.addSubscription("foo/bar/client1", "client1");
-        tree.addSubscription("foo/bar/client2", "client2");
-        tree.addSubscription("foo/bar/client3", "client3");
-        tree.addSubscription("foo/bar/client4", "client4");
+        tree.subscribe("foo/", "foo", "foo2");
+        tree.subscribe("/", "bar");
+        tree.subscribe("foo/bar/client1", "client1");
+        tree.subscribe("foo/bar/client2", "client2");
+        tree.subscribe("foo/bar/client3", "client3");
+        tree.subscribe("foo/bar/client4", "client4");
 
         searchExpecting(tree, "/", "bar", 1);
         searchExpecting(tree, "foo/", "foo2", 2);
@@ -111,7 +111,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testMultiSep() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/////", "foo");
+        tree.subscribe("/////", "foo");
         Assert.assertEquals("first level is a token", 1, tree.search("/////").size());
     }
 
@@ -122,7 +122,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
 
         //This is the known issue
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("a/+/b", "foo");
+        tree.subscribe("a/+/b", "foo");
         Assert.assertEquals("expected", 1, tree.search("a//b").size());
         Assert.assertEquals("not expected", 0, tree.search("a///b").size());
     }
@@ -134,7 +134,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
 
         //This is the known issue
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+/+/+/+/+/+", "Client1");
+        tree.subscribe("+/+/+/+/+/+", "Client1");
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
         Assert.assertEquals("should have subscription", 1, tree.search("foo/////bar").size());
         Assert.assertEquals("should NOT have subscription", 0, tree.search("///////").size());
@@ -147,7 +147,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testMultiPathSepUC2() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+/+/+/+/+/", "Client1");
+        tree.subscribe("+/+/+/+/+/", "Client1");
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
     }
 
@@ -155,7 +155,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testMultiPathSepUC3() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/+/+/+/+/", "Client1");
+        tree.subscribe("/+/+/+/+/", "Client1");
         Assert.assertEquals("should have subscription", 1, tree.search("/seg1/seg2/seg3/seg4/").size());
         Assert.assertEquals("should NOT have subscription", 0, tree.search("/seg1/seg2/seg3/seg4/bar").size());
         Assert.assertEquals("should have subscription", 1, tree.search("/////").size());
@@ -165,7 +165,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testTopLevelTokenMatchPath() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("+", "foo");
+        tree.subscribe("+", "foo");
         System.err.println(tree.toTree(System.lineSeparator()));
         Assert.assertEquals("first level is a token", 1, tree.search("anything").size());
         Assert.assertEquals("no match expected", 0, tree.search("anything/else").size());
@@ -175,8 +175,8 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testTopLevelPrefixTokenMatchDistinct() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("/foo", "foo"); //different things
-        tree.addSubscription("foo", "bar");
+        tree.subscribe("/foo", "foo"); //different things
+        tree.subscribe("foo", "bar");
         System.err.println(tree.toTree(System.lineSeparator()));
         Assert.assertEquals("should be 2 distinct branches", 2, tree.getBranchCount());
         Assert.assertEquals("top level path sep is distinct from none", 1, tree.search("/foo").size());
@@ -187,8 +187,8 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testTopLevelSuffixTokenMatchDistinct() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("foo/", "foo"); //different things
-        tree.addSubscription("foo", "bar");
+        tree.subscribe("foo/", "foo"); //different things
+        tree.subscribe("foo", "bar");
         System.err.println(tree.toTree(System.lineSeparator()));
         Assert.assertEquals("should be 2 distinct branches", 1, tree.getBranchCount());
         Assert.assertEquals("top level path sep is distinct from none", 1, tree.search("foo/").size());
@@ -200,10 +200,10 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testWildcard() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("foo/bar/#", "foo");
-        tree.addSubscription("foo/#", "bar");
-        tree.addSubscription("/#", "foo1");
-        tree.addSubscription("#", "root");
+        tree.subscribe("foo/bar/#", "foo");
+        tree.subscribe("foo/#", "bar");
+        tree.subscribe("/#", "foo1");
+        tree.subscribe("#", "root");
         System.err.println(tree.toTree(System.lineSeparator()));
         Assert.assertEquals("should be 1 distinct branches", 3, tree.getBranchCount());
         Assert.assertEquals("wildcard should match", 3, tree.search("foo/bar/is/me").size());
@@ -216,7 +216,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testWildpath() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("foo/+/is/good", "foo");
+        tree.subscribe("foo/+/is/good", "foo");
         System.err.println(tree.toTree(System.lineSeparator()));
         Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
         Assert.assertEquals("wildcard should match", 0, tree.search("foo/bar").size());
@@ -234,11 +234,11 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
 
         MqttTree<String> tree = createTreeDefaultConfig();
 
-        tree.addSubscription("foo/#", "foo");
-        tree.addSubscription("foo/bar", "foo1");
-        tree.addSubscription("foo/bar/foo", "foo2");
-        tree.addSubscription("foo/bar/zoo", "foo3");
-        tree.addSubscription("foo/bar/#", "foo4");
+        tree.subscribe("foo/#", "foo");
+        tree.subscribe("foo/bar", "foo1");
+        tree.subscribe("foo/bar/foo", "foo2");
+        tree.subscribe("foo/bar/zoo", "foo3");
+        tree.subscribe("foo/bar/#", "foo4");
         System.err.println(tree.toTree(System.lineSeparator()));
 
         Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
@@ -249,7 +249,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
     public void testMutliplePathLevel() throws MqttTreeException, MqttTreeLimitExceededException {
 
         MqttTree<String> tree = createTreeDefaultConfig();
-        tree.addSubscription("foo/+/bar/+/+/is/ok", "foo");
+        tree.subscribe("foo/+/bar/+/+/is/ok", "foo");
         Assert.assertEquals("should be 1 distinct branches", 1, tree.getBranchCount());
         Assert.assertEquals("wildcard should match", 1,
                 tree.search("foo/1/bar/2/3/is/ok").size());
@@ -272,16 +272,16 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
         for (int i = 0; i < 200_000_0; i++){
             String topic = generateRandomTopic(5);
             if(i % 2 == 0){
-                tree.addSubscription(topic,
+                tree.subscribe(topic,
                         ThreadLocalRandom.current().nextInt(0, 1000));
             } else {
-                tree.addSubscription(topic);
+                tree.subscribe(topic);
             }
         }
 
-        tree.addSubscription(search,
+        tree.subscribe(search,
                 ThreadLocalRandom.current().nextInt(0, 1000));
-        tree.addSubscription(searchNoMem);
+        tree.subscribe(searchNoMem);
 
 //        System.err.println(tree.toTree(System.lineSeparator()));
 
@@ -352,10 +352,10 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
                     try {
                         if(i % 2 == 0){
                             String subscriberId = ""+c.incrementAndGet();
-                            mqttTree.addSubscription("some/topic/1",subscriberId);
+                            mqttTree.subscribe("some/topic/1",subscriberId);
                             for (int j = 0; j < 100; j++){
                                 String sub = generateRandomTopic(ThreadLocalRandom.current().nextInt(2, 40));
-                                mqttTree.addSubscription(sub,subscriberId);
+                                mqttTree.subscribe(sub,subscriberId);
                                 allAddedPaths.add(sub);
                             }
                             added.incrementAndGet();
@@ -363,7 +363,7 @@ public class MqttTreeTests extends AbstractMqttTreeTests{
                         } else {
 
                             String subId = c.get() + "";
-                            if(mqttTree.removeSubscriptionFromPath("some/topic/1", subId)){
+                            if(mqttTree.unsubscribe("some/topic/1", subId)){
                                 removed.incrementAndGet();
                                 allRemoved.add(subId);
                             }

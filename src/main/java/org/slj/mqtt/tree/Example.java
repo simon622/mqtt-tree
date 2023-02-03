@@ -9,11 +9,11 @@ public class Example {
         tree.withMaxPathSegments(1024);
         tree.withMaxMembersAtLevel(1024);
 
-        tree.addSubscription("/this/is/a/topic", "ClientId1", "ClientId2");
+        tree.subscribe("/this/is/a/topic", "ClientId1", "ClientId2");
 
-        tree.addSubscription("/this/+/a/topic", "ClientId3");
+        tree.subscribe("/this/+/a/topic", "ClientId3");
 
-        tree.addSubscription("/this/#", "ClientId4");
+        tree.subscribe("/this/#", "ClientId4");
 
         Set<String> m = tree.search("/this/is/a/topic");
 
@@ -23,7 +23,7 @@ public class Example {
 
         System.out.println(String.format("non-matching search had [%s] members", m.size()));
 
-        tree.removeSubscriptionFromPath("/this/is/a/topic", "ClientId2");
+        tree.unsubscribe("/this/is/a/topic", "ClientId2");
 
         m = tree.search("/this/is/a/topic");
 
