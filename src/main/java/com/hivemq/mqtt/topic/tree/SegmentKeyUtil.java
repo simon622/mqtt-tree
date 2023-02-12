@@ -1,4 +1,4 @@
-package com.hivemq.cluster.topictree;
+package com.hivemq.mqtt.topic.tree;
 
 import static com.google.common.base.Preconditions.checkArgument;
 import static com.google.common.base.Preconditions.checkNotNull;

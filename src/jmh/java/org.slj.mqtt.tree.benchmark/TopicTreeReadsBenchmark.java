@@ -16,7 +16,8 @@ import java.util.concurrent.ThreadLocalRandom;
 // http://psy-lob-saw.blogspot.com/2013/12/jaq-spsc-latency-benchmarks1.html
 public class TopicTreeReadsBenchmark {
 
-    public static final int BRANCHES = 50;
+    public static final int BRANCHES = 500;
+    public static final int READER_THREADS = 20;
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(args);
@@ -63,7 +64,7 @@ public class TopicTreeReadsBenchmark {
     @Warmup(iterations = 5)
     @BenchmarkMode(Mode.Throughput)
     @Group("lockBasedTrieReading")
-    @GroupThreads(4)
+    @GroupThreads(READER_THREADS)
     @OperationsPerInvocation(BRANCHES)
     public void newTTTest(
             TopicTreeReadsExecutionPlanShared executionPlan,
@@ -79,7 +80,7 @@ public class TopicTreeReadsBenchmark {
     @Warmup(iterations = 5)
     @BenchmarkMode(Mode.Throughput)
     @Group("brokerTopicTreeReading")
-    @GroupThreads(4)
+    @GroupThreads(READER_THREADS)
     @OperationsPerInvocation(BRANCHES)
     public void brokerTTTest(
             TopicTreeReadsExecutionPlanShared executionPlan,

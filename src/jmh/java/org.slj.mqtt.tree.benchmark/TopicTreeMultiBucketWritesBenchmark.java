@@ -1,11 +1,11 @@
 package org.slj.mqtt.tree.benchmark;
 
 import com.codahale.metrics.Counter;
-import com.hivemq.cluster.topictree.SegmentKeyUtil;
+import com.hivemq.mqtt.topic.tree.SegmentKeyUtil;
 import com.hivemq.mqtt.message.QoS;
 import com.hivemq.mqtt.message.subscribe.Topic;
 import com.hivemq.mqtt.topic.tree.LocalTopicTree;
-import com.hivemq.persistence.local.xodus.bucket.BucketUtils;
+import com.hivemq.util.BucketUtils;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.slj.mqtt.tree.MqttTree;
@@ -20,8 +20,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class TopicTreeMultiBucketWritesBenchmark {
 
-    public static final int BRANCHES = 50;
-    public static final int WRITER_THREADS = 5;
+    public static final int BRANCHES = 500;
+    public static final int WRITER_THREADS = 20;
 
     public static void main(String[] args) throws Exception {
         org.openjdk.jmh.Main.main(args);

@@ -1,4 +1,4 @@
-package com.hivemq.persistence.local.xodus.bucket;
+package com.hivemq.util;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.hivemq.extension.sdk.api.annotations.NotNull;

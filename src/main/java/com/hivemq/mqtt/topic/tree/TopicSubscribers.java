@@ -1,4 +1,4 @@
-package com.hivemq.cluster.topictree;
+package com.hivemq.mqtt.topic.tree;
 
 import com.google.common.collect.ImmutableSet;
 import com.hivemq.extension.sdk.api.annotations.NotNull;
