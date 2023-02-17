@@ -199,13 +199,14 @@ public class MqttTree<T> implements IMqttTree<T> {
 
     public Set<T> search(final String path)
             throws MqttTreeException {
+        if(root == null || !root.hasChildren())
+            return Collections.emptySet();
 
-        if(!MqttTreeUtils.isValidPublishTopic(path, maxPathSize)){
-            throw TREE_INPUT_ERROR;
-        }
+        return searchInternal(path);
 
-        String[] segments = split(path);
-        return searchTreeForMembers(root, segments);
+//        return getNodeIfExists(path).getMembers();
+//        String[] segments = split(path);
+//        return searchTreeForMembers(root, segments);
     }
 
     public boolean hasMembers(final String path){
@@ -228,6 +229,134 @@ public class MqttTree<T> implements IMqttTree<T> {
             }
         }
         return node;
+    }
+
+    protected final Set<T> searchInternal(final String path){
+
+        Set<T> members = new HashSet<>();
+        String[] segments = split(path);
+        searchChildren(root, segments, members);
+        return members;
+    }
+
+    protected void searchChildren(TrieNode<T> node, String[] segments, Set<T> members){
+
+        //root wildpath logic
+        if(node.isRoot()){
+            TrieNode<T> wildpath = node.getChild(DEFAULT_WILDPATH);
+            if(wildpath != null){
+                if(segments.length <= 1){
+                    if(wildpath != null && wildpath.isLeaf()){
+                        copyMembersNullSafe(members, wildpath);
+                    }
+                }
+                //a + at root is equal to nothing at root
+                searchChildren(wildpath, segments, members);
+
+            }
+
+        }
+
+        //wildpath leaf logic
+        if(node.isLeaf() &&
+                node.isWildpath() && segments.length <= 1){
+            copyMembersNullSafe(members, node);
+        }
+
+        TrieNode<T> last = null;
+        for (int i=0; i < segments.length; i++){
+            String currentSegment = segments[i];
+
+            //check for wildpath segment
+            if(node.isSeparator() || node.isRoot()) {
+                TrieNode<T> wildpath = node.getChild(DEFAULT_WILDPATH);
+                if(wildpath != null){
+                    String[] from =
+                            Arrays.copyOfRange(segments, i+1, segments.length);
+                    if(from.length > 0){
+                        searchChildren(wildpath, from, members);
+                    } else {
+                        //weve run out of path segments BUT we have a wildpath so we need to ensure we dont have a sub forward
+                        readWildpathAtNextLevel(wildpath, members, true);
+                    }
+                }
+            }
+
+            //check for wildcard
+            if(node.isSeparator() || node.isRoot()) {
+                TrieNode<T> wildcard = node.getChild(DEFAULT_WILDCARD);
+                if(wildcard != null){
+                    copyMembersNullSafe(members, wildcard);
+                }
+            }
+
+            node = node.getChild(currentSegment);
+            if(node == null) {
+                break;
+            }
+
+            last = node;
+        }
+
+        if(last != null){
+            //check for wildcard at parent level
+            readWildcardAtNextLevel(last, members);
+        }
+
+        //this is the direct match
+        if(node != null){
+            copyMembersNullSafe(members, node);
+        }
+    }
+
+
+    protected void readWildcardAtNextLevel(TrieNode<T> node, Set<T> members){
+        if(node != null) {
+            if(!node.isSeparator()){
+                TrieNode<T> sp = node.getChild(splitStr);
+                if(sp != null && sp.isSeparator()){
+                    sp = sp.getChild(DEFAULT_WILDCARD);
+                    if(sp != null && sp.isLeaf()){
+                        copyMembersNullSafe(members, sp);
+                    }
+                }
+            }
+        }
+    }
+
+    protected void readWildpathAtNextLevel(TrieNode<T> node, Set<T> members, boolean allowTraversal){
+        if(node != null) {
+            if(node.isSeparator()){
+                TrieNode<T> sp = node.getChild(DEFAULT_WILDPATH);
+                if(sp != null && sp.isLeaf()){
+                    copyMembersNullSafe(members, sp);
+                }
+            } else {
+                if(allowTraversal){
+                    TrieNode<T> sp = node.getChild(splitStr);
+                    readWildpathAtNextLevel(sp, members, false);
+                }
+            }
+        }
+    }
+
+
+
+    protected Set<T> copyMembersNullSafe(Set<T> copyTo, MqttTreeNode<T> copyFrom){
+        Set<T> members = null;
+        if(copyFrom != null) {
+            members = copyFrom.getMembers();
+        }
+        return copyMembersNullSafe(copyTo, members);
+    }
+
+    protected Set<T> copyMembersNullSafe(Set<T> copyTo, Set<T> copyFrom){
+        if(copyFrom != null &&
+                !copyFrom.isEmpty()){
+            if (copyTo == null) copyTo = new HashSet<>();
+            copyTo.addAll(copyFrom);
+        }
+        return copyTo;
     }
 
     private static void visitChildren(MqttTreeNode node, MqttTreeNodeVisitor visitor) {
@@ -269,111 +398,6 @@ public class MqttTree<T> implements IMqttTree<T> {
                 }
             }
         }
-    }
-
-    private Set<T> searchTreeForMembers(TrieNode<T> node, String[] segments){
-
-        if(node == null) throw TREE_STATE_ERROR;
-
-        Set<T> wildcardMembers = null;
-        Set<T> wildSegmentMembers = null;
-        Set<T> fullMembers = null;
-
-        //wildpath root
-        if(node.isRoot()){
-            if(node.hasChild(wildPath)){
-                TrieNode<T> wildpath = node.getChild(wildPath);
-                Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildpath, segments);
-                wildSegmentMembers = copyMembersNullSafe(wildSegmentMembers, wildSegmentMembersAtLevel);
-            }
-        }
-
-        for (int i=0; i < segments.length; i++){
-
-            //wildcard
-            if(node.hasChild(wildCard)){
-                TrieNode<T> wildCardNodeAtLevel = node.getChild(wildCard);
-                wildcardMembers = copyMembersNullSafe(wildcardMembers, wildCardNodeAtLevel);
-            }
-
-            //wildpath
-            //TODO - Fix me - the wildpath logic needs attention
-            if(node.hasChild(wildPath)){
-                TrieNode<T> wildPathNodeAtLevel = node.getChild(wildPath);
-                if(wildPathNodeAtLevel != null){
-                    String[] remainingSegments =
-                            Arrays.copyOfRange(segments, i+1, segments.length);
-                    //recurse point
-                    Set<T> wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
-                    wildSegmentMembers = copyMembersNullSafe(wildSegmentMembers, wildSegmentMembersAtLevel);
-
-                    //read a node forward
-                    if(wildPathNodeAtLevel.hasChild(splitStr)){
-                        remainingSegments =
-                                Arrays.copyOfRange(segments, i, segments.length);
-
-                        wildSegmentMembersAtLevel = searchTreeForMembers(wildPathNodeAtLevel, remainingSegments);
-                        wildSegmentMembers = copyMembersNullSafe(wildSegmentMembers, wildSegmentMembersAtLevel);
-                    }
-                }
-            }
-
-            node = node.getChild(segments[i]);
-            if(node == null) break;
-
-            //wildcard under sep
-            if(!node.isSeparator()){
-                if(node.hasChild(splitStr)){
-                    TrieNode<T> peekAhead = node.getChild(splitStr);
-                    if(peekAhead.hasChild(wildCard)){
-                        TrieNode<T> wildCardNodeNextLevel = peekAhead.getChild(wildCard);
-                        wildcardMembers = copyMembersNullSafe(wildcardMembers, wildCardNodeNextLevel);
-                    }
-                }
-            } else {
-                if(node.hasChild(wildPath)){
-                    TrieNode<T> peekAheadWildPathChild = node.getChild(wildPath);
-                    if(peekAheadWildPathChild.isLeaf() && i == segments.length - 1){
-                        //this is added where "/+" is equal to "/"
-                        wildSegmentMembers = copyMembersNullSafe(wildSegmentMembers, peekAheadWildPathChild);
-                    }
-                }
-            }
-        }
-
-        if(node != null){
-            fullMembers = node.getMembers();
-        }
-
-        //avoiding having to resize
-        int size = wildcardMembers != null ? wildcardMembers.size() : 0;
-        size += (wildSegmentMembers != null ? wildSegmentMembers.size() : 0);
-        size += (fullMembers != null ? fullMembers.size() : 0);
-        Set<T> merged = new HashSet<>(size);
-
-        merged = copyMembersNullSafe(merged, wildcardMembers);
-        merged = copyMembersNullSafe(merged, wildSegmentMembers);
-        merged = copyMembersNullSafe(merged, fullMembers);
-        return merged;
-    }
-
-    protected Set<T> copyMembersNullSafe(Set<T> copyTo, MqttTreeNode<T> copyFrom){
-        Set<T> members = null;
-        if(copyFrom != null) {
-            if (copyFrom.hasMembers()) {
-                members = copyFrom.getMembers();
-            }
-        }
-        return copyMembersNullSafe(copyTo, members);
-    }
-
-    protected Set<T> copyMembersNullSafe(Set<T> copyTo, Set<T> copyFrom){
-        if(copyFrom != null &&
-                !copyFrom.isEmpty()){
-            if (copyTo == null) copyTo = new HashSet<>();
-            copyTo.addAll(copyFrom);
-        }
-        return copyTo;
     }
 
     public String toTree(String lineSep){
@@ -434,7 +458,7 @@ public class MqttTree<T> implements IMqttTree<T> {
     }
 
     protected String[] split(final String path){
-        return MqttTreeUtils.splitPathRetainingSplitChar(path, split);
+        return MqttTreeUtils.splitPathRetainingSplitChar(path, split, splitStr);
     }
 
     public class TrieNode<T> implements MqttTreeNode{
@@ -450,6 +474,8 @@ public class MqttTree<T> implements IMqttTree<T> {
         private final Object childrenMutex = new Object();
         private final AtomicInteger memberCount = new AtomicInteger(0);
 
+        private final int hashCode;
+
         protected TrieNode(final TrieNode parent, final String pathSegment){
             this.parent = parent;
             this.pathSegment = pathSegment;
@@ -462,6 +488,16 @@ public class MqttTree<T> implements IMqttTree<T> {
                     throw TREE_INPUT_ERROR;
                 }
             }
+
+            //hash
+            if(pathSegment != null){
+                int result = pathSegment.hashCode();
+                result = 31 * result + (parent != null ? parent.hashCode() : 0);
+                hashCode = result;
+            } else {
+                hashCode = 0;
+            }
+
         }
 
         public TrieNode addChild(final String pathSegment, final T... membersIn)
@@ -475,17 +511,29 @@ public class MqttTree<T> implements IMqttTree<T> {
                     if (children == null) {
                         //size the child map according to being '/'
                         //root has invariable 1 child '/' and '/' has many children
-                        children = new ConcurrentHashMap<>((parent != null && parent.isRoot() && isSeparator())
+                        children = new HashMap<>((parent != null && parent.isRoot() && isSeparator())
                                 ? defaultRootChildCountInitializationSize : defaultChildCountInitializationSize);
                     }
                 }
             }
-            if(!children.containsKey(pathSegment)){
-                child = new TrieNode<>(this, pathSegment);
-                children.put(pathSegment, child);
-            } else {
-                child = children.get(pathSegment);
+
+//            child = children.get(pathSegment);
+//            if(child == null){
+//                synchronized (childrenMutex){
+//                    child = new TrieNode<>(this, pathSegment);
+//                    children.put(pathSegment, child);
+//                }
+//            }
+
+            synchronized (childrenMutex){
+                if(!children.containsKey(pathSegment)){
+                    child = new TrieNode<>(this, pathSegment);
+                    children.put(pathSegment, child);
+                } else {
+                    child = children.get(pathSegment);
+                }
             }
+
             if(membersIn.length > 0) child.addMembers(membersIn);
             return child;
         }
@@ -600,7 +648,7 @@ public class MqttTree<T> implements IMqttTree<T> {
                     logger.warn("member copy operation took {} for {} members",
                             System.currentTimeMillis() - start, t.size());
                 }
-                return t;
+                return members;
             }
         }
 
@@ -623,6 +671,7 @@ public class MqttTree<T> implements IMqttTree<T> {
         public String toString() {
             return "TrieNode{" +
                     "pathSegment='" + pathSegment + '\'' +
+                    ", isLeaf=" + isLeaf() +
                     ", isRoot=" + isRoot +
                     ", isSeparator=" + isSeparator +
                     ", memberCount=" + memberCount +
@@ -659,9 +708,7 @@ public class MqttTree<T> implements IMqttTree<T> {
 
         @Override
         public int hashCode() {
-            int result = pathSegment.hashCode();
-            result = 31 * result + (parent != null ? parent.hashCode() : 0);
-            return result;
+            return hashCode;
         }
     }
 }

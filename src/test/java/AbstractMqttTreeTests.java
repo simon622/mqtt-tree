@@ -1,5 +1,6 @@
 import org.junit.Assert;
 import org.slj.mqtt.tree.MqttTree;
+import org.slj.mqtt.tree.SearchableMqttTree;
 
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;

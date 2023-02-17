@@ -20,9 +20,16 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class MqttTreeUtils {
 
+    public static final String SPLIT = "/";
+    public static final char SPLIT_C = '/';
+
     private final static String[] EMPTY = new String[0];
 
-    public static String[] splitPathRetainingSplitChar(final String str, char separatorChar){
+    public static String[] splitPath(final String str){
+        return splitPathRetainingSplitChar(str, SPLIT_C, SPLIT);
+    }
+
+    public static String[] splitPathRetainingSplitChar(final String str, char splitC, String splitS){
         if (str == null) {
             return null;
         }
@@ -34,14 +41,13 @@ public class MqttTreeUtils {
         int i = 0;
         int start = 0;
         boolean match = false;
-        String sep = separatorChar + "";
         while (i < len) {
-            if (str.charAt(i) == separatorChar) {
+            if (str.charAt(i) == splitC) {
                 if (match) {
                     list.add(str.substring(start, i));
                     match = false;
                 }
-                list.add(sep);
+                list.add(splitS);
                 start = ++i;
                 continue;
             }
@@ -53,6 +59,7 @@ public class MqttTreeUtils {
         }
         return list.toArray(EMPTY);
     }
+
 
     /**
      *  The character data in a UTF-8 Encoded String MUST be well-formed UTF-8 as defined by the Unicode
@@ -141,7 +148,7 @@ public class MqttTreeUtils {
     }
 
     public static void main(String[] args) {
-        System.err.println(Arrays.toString(splitPathRetainingSplitChar("/this/is/my/string//", '/')));
+        System.err.println(Arrays.toString(splitPathRetainingSplitChar("/this/is/my/string//", '/', "/")));
     }
 
     public static String generateRandomTopic(int segments){
